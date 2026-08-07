@@ -1,0 +1,48 @@
+# Project notes / working documents (never published)
+NOTES.md
+
+# Company-specific assets: templates, logos, branding.
+# Nothing identifying the company or its people belongs in this repository.
+*.xlsx
+*.xls
+*.xlsm
+/company-pack/
+/private/
+
+# Company Packs and data backups are .json files full of company detail.
+# Ignore every .json by default and allow back only the ones the build needs, so a
+# pack saved into this folder can never be committed by accident.
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+!.vscode/extensions.json
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build info
+tsconfig.tsbuildinfo

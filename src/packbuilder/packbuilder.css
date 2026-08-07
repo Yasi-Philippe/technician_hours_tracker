@@ -1,0 +1,139 @@
+/*
+ * The pack builder is a desk tool, not a field tool. It gets a wider, denser layout than
+ * the app, but keeps the same visual language so it is obviously part of the same project.
+ */
+
+.builder {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+  background: var(--paper);
+  min-height: 100%;
+}
+
+.builder-head {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 20px;
+  margin-bottom: 8px;
+}
+
+.builder-head h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 12px 0 8px;
+}
+
+.builder-head p {
+  color: var(--ink-muted);
+  margin: 0;
+  max-width: 62ch;
+}
+
+.builder-warning {
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 20px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.builder-step {
+  margin-top: 36px;
+}
+
+.builder-step-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin: 0 0 16px;
+}
+
+.builder-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.builder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.map-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.map-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 0 10px;
+}
+
+.map-table td {
+  padding: 6px 8px 6px 0;
+  border-top: 1px solid var(--line);
+}
+
+.map-table td:first-child {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.map-table select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.map-required {
+  color: var(--accent);
+  margin-left: 4px;
+}
+
+.builder-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  padding: 16px 0 0;
+  margin-top: 40px;
+  display: flex;
+  gap: 12px;
+}
+
+.builder-actions .btn {
+  width: auto;
+  flex: 1;
+}
+
+.linecount {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-top: 6px;
+}
