@@ -167,6 +167,52 @@ withTemplate('a configured install', () => {
     expect(entry!.extraMinutesOverride).toBeNull()
   })
 
+  it('starts in automatic mode and says so', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    const auto = await screen.findByRole('button', { name: 'Automatico' })
+    const manual = screen.getByRole('button', { name: 'Manuale' })
+    expect(auto.getAttribute('aria-pressed')).toBe('true')
+    expect(manual.getAttribute('aria-pressed')).toBe('false')
+    // The explanation names the contractual day rather than hardcoding "8".
+    expect(screen.getByText(/Calcolate da sole.*8h/)).toBeTruthy()
+  })
+
+  it('carries the calculated overtime across when switching to manual', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    const end = await screen.findByDisplayValue('15:00')
+    await user.clear(end)
+    await user.type(end, '17:00')
+    await user.tab()
+
+    // Two hours of overtime were calculated; switching to manual must not reset to zero.
+    await user.click(screen.getByRole('button', { name: 'Manuale' }))
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    const [entry] = await db.entries.toArray()
+    expect(entry!.extraMinutesOverride).toBe(120)
+  })
+
+  it('goes back to automatic and forgets the manual figure', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    await user.click(screen.getByRole('button', { name: 'Manuale' }))
+    await user.click(screen.getByRole('button', { name: 'Ore extra +30' }))
+    await user.click(screen.getByRole('button', { name: 'Automatico' }))
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    const [entry] = await db.entries.toArray()
+    expect(entry!.extraMinutesOverride).toBeNull()
+  })
+
   it('names overtime instead of appending it, so the total is not misread', async () => {
     const user = userEvent.setup()
     render(<App />)

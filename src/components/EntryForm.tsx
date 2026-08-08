@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react'
 import type { CompanyPack, Entry, Person, Settings } from '../types'
 import type { Strings } from '../i18n'
-import { computeHours, formatDuration } from '../lib/time'
+import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
 import { Field, OptionGrid, Sheet, TimeBox } from './ui'
 import { optionsWith, recentDescriptions } from '../screens/shared'
 
@@ -122,7 +122,13 @@ export function EntryForm({
         </span>
       </div>
 
-      <OvertimeOverride draft={draft} setDraft={setDraft} t={t} totalMinutes={hours.totalMinutes} />
+      <OvertimeMode
+        draft={draft}
+        setDraft={setDraft}
+        t={t}
+        hours={hours}
+        contractualMinutes={pack.defaults.contractualDailyMinutes}
+      />
 
       <Field label={t.project}>
         <OptionGrid
@@ -201,67 +207,95 @@ export function EntryForm({
 }
 
 /**
- * The manual escape hatch for overtime.
+ * Which mode overtime is in, always stated rather than implied.
  *
- * Hidden until asked for, because on almost every day the calculation is right and an
- * extra visible field is an extra thing to worry about.
+ * The earlier version showed only a "correct the overtime" button, which read as an
+ * instruction — several people would reasonably conclude they had to enter overtime by
+ * hand every day. Both modes are now visible side by side with the active one selected,
+ * so the answer to "am I supposed to fill this in?" is on screen.
+ *
+ * Automatic is the default and stays the default: nothing here changes unless the
+ * technician deliberately switches.
  */
-function OvertimeOverride({
+function OvertimeMode({
   draft,
   setDraft,
   t,
-  totalMinutes,
+  hours,
+  contractualMinutes,
 }: {
   draft: EntryDraft
   setDraft: (next: EntryDraft) => void
   t: Strings
-  totalMinutes: number
+  hours: Hours
+  contractualMinutes: number
 }) {
   const manual = draft.extraMinutesOverride !== null
+  const value = draft.extraMinutesOverride ?? hours.extraMinutes
 
-  if (!manual) {
-    return (
-      <button
-        type="button"
-        className="btn btn-ghost"
-        style={{ marginTop: 10 }}
-        onClick={() => setDraft({ ...draft, extraMinutesOverride: 0 })}
-      >
-        {t.adjustOvertime}
-      </button>
-    )
-  }
-
-  const value = draft.extraMinutesOverride ?? 0
   const step = (delta: number) =>
     setDraft({
       ...draft,
-      extraMinutesOverride: Math.min(Math.max(value + delta, 0), totalMinutes),
+      extraMinutesOverride: clamp(value + delta, 0, hours.totalMinutes),
     })
 
   return (
     <div className="card" style={{ marginTop: 12 }}>
       <div className="card-body">
-        <span className="field-label">{t.overtimeManual}</span>
-        <div className="spread">
-          <button type="button" className="btn" style={{ width: 64 }} onClick={() => step(-30)}>
-            −
+        <span className="field-label">{t.extraHours}</span>
+
+        <div className="options cols-2">
+          <button
+            type="button"
+            className={`option${manual ? '' : ' is-selected'}`}
+            aria-pressed={!manual}
+            onClick={() => setDraft({ ...draft, extraMinutesOverride: null })}
+          >
+            {t.overtimeAutomatic}
           </button>
-          <strong style={{ fontSize: 22, fontVariantNumeric: 'tabular-nums' }}>
-            {formatDuration(value)}
-          </strong>
-          <button type="button" className="btn" style={{ width: 64 }} onClick={() => step(30)}>
-            +
+          <button
+            type="button"
+            className={`option${manual ? ' is-selected' : ''}`}
+            aria-pressed={manual}
+            // Seeded with the calculated figure, not zero. Switching to manual to nudge
+            // the number by half an hour should not silently wipe it first.
+            onClick={() => setDraft({ ...draft, extraMinutesOverride: hours.extraMinutes })}
+          >
+            {t.overtimeManualMode}
           </button>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          style={{ marginTop: 10 }}
-          onClick={() => setDraft({ ...draft, extraMinutesOverride: null })}
-        >
-          {t.useAutomatic}
-        </button>
+
+        {manual ? (
+          <div className="spread" style={{ marginTop: 14 }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: 64 }}
+              aria-label={`${t.extraHours} −30`}
+              onClick={() => step(-30)}
+            >
+              −
+            </button>
+            <strong style={{ fontSize: 24, fontVariantNumeric: 'tabular-nums' }}>
+              {formatDuration(value)}
+            </strong>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: 64 }}
+              aria-label={`${t.extraHours} +30`}
+              onClick={() => step(30)}
+            >
+              +
+            </button>
+          </div>
+        ) : null}
+
+        <p className="hint">
+          {manual
+            ? t.overtimeManualExplain
+            : t.overtimeAutoExplain.replace('{h}', formatDuration(contractualMinutes))}
+        </p>
       </div>
     </div>
   )
