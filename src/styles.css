@@ -1381,3 +1381,162 @@ textarea.input {
 .row-remove:active {
   background: var(--accent-line);
 }
+
+/* ------------------------------------------------------------- month grid */
+
+/*
+ * A month of work. Cells are square-ish and sized so a whole month fits without
+ * scrolling on a phone, with the hours worked printed under the date — a calendar of
+ * bare numbers would not answer the question this screen exists for.
+ */
+.month {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.month-head {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--line);
+}
+
+.month-dow {
+  text-align: center;
+  padding: 8px 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+.month-dow.is-weekend {
+  color: var(--ink-ghost);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.month-cell {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  aspect-ratio: 1 / 1;
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.month-cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.month-grid > .month-cell:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.month-num {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.month-hours {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Days belonging to the neighbouring months keep the columns aligned but stay quiet. */
+.month-cell.is-outside .month-num {
+  color: var(--ink-ghost);
+  font-weight: 500;
+}
+
+.month-cell.is-outside .month-hours {
+  color: var(--ink-ghost);
+}
+
+.month-cell.has-work {
+  background: var(--paper-sunk);
+}
+
+.month-cell.has-work .month-num {
+  font-weight: 700;
+}
+
+.month-cell.has-overtime .month-hours {
+  color: var(--accent);
+}
+
+.month-cell.is-today .month-num {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.month-cell.is-selected {
+  background: var(--ink);
+}
+
+.month-cell.is-selected .month-num,
+.month-cell.is-selected .month-hours {
+  color: #fff;
+}
+
+.month-cell.is-selected.is-today .month-num {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.month-cell:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* Tappable title in the top bar, for jumping to another month. */
+.topbar-heading {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  padding: 4px 8px;
+  min-height: 44px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.topbar-heading:disabled {
+  cursor: default;
+}
+
+.topbar-heading .topbar-title,
+.topbar-heading .topbar-sub {
+  margin: 0;
+}
+
+.topbar-heading:not(:disabled) .topbar-sub::after {
+  content: ' ▾';
+  font-size: 14px;
+  opacity: 0.6;
+}

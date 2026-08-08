@@ -9,10 +9,15 @@
 
 import {
   addDays,
+  addMonths,
+  endOfISOWeek,
+  endOfMonth,
   format,
   getISOWeek,
   getISOWeekYear,
+  isSameMonth,
   startOfISOWeek,
+  startOfMonth,
   setISOWeek,
   setISOWeekYear,
 } from 'date-fns'
@@ -45,6 +50,55 @@ export function addDaysISO(iso: ISODate, days: number): ISODate {
 export function weekDates(iso: ISODate): ISODate[] {
   const monday = startOfISOWeek(fromISODate(iso))
   return Array.from({ length: 7 }, (_, i) => toISODate(addDays(monday, i)))
+}
+
+// ---------------------------------------------------------------------------
+// Months
+// ---------------------------------------------------------------------------
+
+export function addMonthsISO(iso: ISODate, months: number): ISODate {
+  return toISODate(addMonths(fromISODate(iso), months))
+}
+
+export function startOfMonthISO(iso: ISODate): ISODate {
+  return toISODate(startOfMonth(fromISODate(iso)))
+}
+
+export function endOfMonthISO(iso: ISODate): ISODate {
+  return toISODate(endOfMonth(fromISODate(iso)))
+}
+
+export function isSameMonthISO(a: ISODate, b: ISODate): boolean {
+  return isSameMonth(fromISODate(a), fromISODate(b))
+}
+
+/**
+ * The month laid out as whole weeks, Monday first.
+ *
+ * Complete weeks on both ends, so every row is seven cells and the grid never has gaps
+ * to reason about. The leading and trailing days belong to neighbouring months and are
+ * shown faded — dropping them entirely would misalign the columns.
+ */
+export function monthMatrix(iso: ISODate): ISODate[][] {
+  const first = startOfMonth(fromISODate(iso))
+  const start = startOfISOWeek(first)
+  const end = endOfISOWeek(endOfMonth(first))
+
+  const weeks: ISODate[][] = []
+  let cursor = start
+  while (cursor <= end) {
+    const week = Array.from({ length: 7 }, (_, i) => toISODate(addDays(cursor, i)))
+    weeks.push(week)
+    cursor = addDays(cursor, 7)
+  }
+  return weeks
+}
+
+/** Month names for a year, in the interface language. */
+export function monthNames(language: Language): string[] {
+  return Array.from({ length: 12 }, (_, i) =>
+    format(new Date(2000, i, 1), 'LLLL', { locale: LOCALES[language] }),
+  )
 }
 
 export function isoWeek(iso: ISODate): number {

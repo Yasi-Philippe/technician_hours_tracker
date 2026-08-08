@@ -13,16 +13,24 @@ import type { ScreenProps } from './shared'
 import { Empty, HoursSummary } from '../components/ui'
 import { ExportSheet } from '../components/ExportSheet'
 import { PackRequired } from '../components/PackRequired'
+import { MonthGrid, type DayTotals } from '../components/MonthGrid'
+import { MonthPicker } from '../components/MonthPicker'
 import { computeHours, formatDuration } from '../lib/time'
 import {
   addDaysISO,
+  addMonthsISO,
+  endOfMonthISO,
   formatDayNumber,
   formatDayShort,
+  formatMonthYear,
   isoWeek,
   isWeekend,
+  startOfMonthISO,
   todayISO,
   weekDates,
 } from '../lib/dates'
+
+type Mode = 'week' | 'month'
 
 export default function WeekScreen({
   settings,
@@ -35,6 +43,8 @@ export default function WeekScreen({
 }: ScreenProps & { onGoToDay: (date: string) => void }) {
   const [exporting, setExporting] = useState(false)
   const [needsPack, setNeedsPack] = useState(false)
+  const [mode, setMode] = useState<Mode>('week')
+  const [jumping, setJumping] = useState(false)
 
   const days = weekDates(selectedDate)
   const entries =
@@ -45,6 +55,53 @@ export default function WeekScreen({
     ) ?? []
 
   const contractual = pack?.defaults.contractualDailyMinutes ?? 480
+
+  // The grid shows whole weeks, so it spills a few days past the month at both ends.
+  const monthFrom = addDaysISO(startOfMonthISO(selectedDate), -7)
+  const monthTo = addDaysISO(endOfMonthISO(selectedDate), 7)
+  // Only queried in month mode: no reason to read five weeks of entries to draw a week.
+  const monthEntries =
+    useLiveQuery(
+      async (): Promise<Entry[]> =>
+        mode === 'month'
+          ? db.entries.where('date').between(monthFrom, monthTo, true, true).toArray()
+          : [],
+      [mode, monthFrom, monthTo],
+    ) ?? []
+
+  const earliest =
+    useLiveQuery(async () => (await db.entries.orderBy('date').first())?.date ?? todayISO(), [], null)
+
+  const totalsByDate = useMemo(() => {
+    const map = new Map<string, DayTotals>()
+    for (const entry of monthEntries) {
+      const hours = computeHours(
+        entry.startMinutes,
+        entry.endMinutes,
+        contractual,
+        entry.extraMinutesOverride,
+      )
+      const current = map.get(entry.date) ?? { totalMinutes: 0, extraMinutes: 0 }
+      map.set(entry.date, {
+        totalMinutes: current.totalMinutes + hours.totalMinutes,
+        extraMinutes: current.extraMinutes + hours.extraMinutes,
+      })
+    }
+    return map
+  }, [monthEntries, contractual])
+
+  const monthTotals = useMemo(() => {
+    let total = 0
+    let extra = 0
+    let days = 0
+    for (const [date, value] of totalsByDate) {
+      if (date < startOfMonthISO(selectedDate) || date > endOfMonthISO(selectedDate)) continue
+      total += value.totalMinutes
+      extra += value.extraMinutes
+      days += 1
+    }
+    return { total, extra, days }
+  }, [totalsByDate, selectedDate])
 
   const byDay = useMemo(() => {
     const map = new Map<string, Entry[]>()
@@ -73,34 +130,98 @@ export default function WeekScreen({
     return { total, extra, days: byDay.size }
   }, [entries, contractual, byDay])
 
+  const step = (delta: number) =>
+    onSelectDate(
+      mode === 'week' ? addDaysISO(selectedDate, delta * 7) : addMonthsISO(selectedDate, delta),
+    )
+
   return (
     <div className="screen">
       <div className="topbar">
         <button
           type="button"
           className="topbar-action"
-          onClick={() => onSelectDate(addDaysISO(selectedDate, -7))}
-          aria-label={t.previousWeek}
+          onClick={() => step(-1)}
+          aria-label={mode === 'week' ? t.previousWeek : t.month}
         >
           ‹
         </button>
-        <div style={{ textAlign: 'center' }}>
-          <p className="topbar-title">{t.week}</p>
-          <p className="topbar-sub">
-            {isoWeek(selectedDate)} · {formatDayNumber(days[0]!)}–{formatDayNumber(days[6]!)}
-          </p>
-        </div>
+        {/* The title is a button in month mode: stepping one month at a time is fine for
+            last month and useless for last March. */}
+        <button
+          type="button"
+          className="topbar-heading"
+          disabled={mode === 'week'}
+          onClick={() => setJumping(true)}
+        >
+          <span className="topbar-title">{mode === 'week' ? t.week : t.jumpTo}</span>
+          <span className="topbar-sub">
+            {mode === 'week'
+              ? `${isoWeek(selectedDate)} · ${formatDayNumber(days[0]!)}–${formatDayNumber(days[6]!)}`
+              : formatMonthYear(selectedDate, settings.language)}
+          </span>
+        </button>
         <button
           type="button"
           className="topbar-action"
-          onClick={() => onSelectDate(addDaysISO(selectedDate, 7))}
-          aria-label={t.nextWeek}
+          onClick={() => step(1)}
+          aria-label={mode === 'week' ? t.nextWeek : t.month}
         >
           ›
         </button>
       </div>
 
       <div className="screen-pad">
+        <div className="options cols-2" style={{ marginBottom: 14 }}>
+          <button
+            type="button"
+            className={`option${mode === 'week' ? ' is-selected' : ''}`}
+            aria-pressed={mode === 'week'}
+            onClick={() => setMode('week')}
+          >
+            {t.modeWeek}
+          </button>
+          <button
+            type="button"
+            className={`option${mode === 'month' ? ' is-selected' : ''}`}
+            aria-pressed={mode === 'month'}
+            onClick={() => setMode('month')}
+          >
+            {t.modeMonth}
+          </button>
+        </div>
+
+        {mode === 'month' ? (
+          <>
+            <div className="totals" style={{ marginBottom: 14 }}>
+              <div className="total">
+                <div className="total-value">{formatDuration(monthTotals.total)}</div>
+                <div className="total-label">{t.monthTotalHours}</div>
+              </div>
+              <div className="total">
+                <div className={`total-value${monthTotals.extra > 0 ? ' accent' : ''}`}>
+                  {formatDuration(monthTotals.extra)}
+                </div>
+                <div className="total-label">{t.extraHours}</div>
+              </div>
+              <div className="total">
+                <div className="total-value">{monthTotals.days}</div>
+                <div className="total-label">{t.daysWorked}</div>
+              </div>
+            </div>
+
+            <MonthGrid
+              anchor={selectedDate}
+              selected={selectedDate}
+              totalsByDate={totalsByDate}
+              weekdayLabels={days.map((date) => formatDayShort(date, settings.language))}
+              onSelect={onGoToDay}
+            />
+
+            {monthTotals.days === 0 ? <p className="hint">{t.nothingThisMonth}</p> : null}
+          </>
+        ) : (
+        <>
         <div className="totals">
           <div className="total">
             <div className="total-value">{formatDuration(totals.total)}</div>
@@ -152,7 +273,20 @@ export default function WeekScreen({
           </button>
           {!pack ? <p className="hint">{t.exportNeedsPack}</p> : null}
         </div>
+        </>
+        )}
       </div>
+
+      {jumping ? (
+        <MonthPicker
+          anchor={selectedDate}
+          earliest={earliest ?? todayISO()}
+          language={settings.language}
+          t={t}
+          onPick={onSelectDate}
+          onClose={() => setJumping(false)}
+        />
+      ) : null}
 
       {needsPack ? <PackRequired t={t} onClose={() => setNeedsPack(false)} /> : null}
 

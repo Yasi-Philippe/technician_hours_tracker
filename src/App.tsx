@@ -74,7 +74,7 @@ export default function App() {
 
       <nav className="tabbar">
         <TabButton id="day" current={tab} onSelect={setTab} icon="day" label={t.navToday} />
-        <TabButton id="week" current={tab} onSelect={setTab} icon="week" label={t.navWeek} />
+        <TabButton id="week" current={tab} onSelect={setTab} icon="week" label={t.navCalendar} />
         <TabButton id="stats" current={tab} onSelect={setTab} icon="stats" label={t.navStats} />
         <TabButton
           id="settings"

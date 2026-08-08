@@ -136,7 +136,7 @@ describe('a blank install', () => {
     await user.click(await screen.findByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
 
-    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    await user.click(screen.getByRole('button', { name: /Calendario/ }))
     const exportButton = await screen.findByRole('button', { name: 'Crea il file Excel' })
     // Enabled, so tapping it can explain rather than silently doing nothing.
     expect((exportButton as HTMLButtonElement).disabled).toBe(false)
@@ -471,7 +471,7 @@ withTemplate('a configured install', () => {
     await user.click(screen.getByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
 
-    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    await user.click(screen.getByRole('button', { name: /Calendario/ }))
     const more = await screen.findByRole('button', { name: 'Mostra tutto' })
     expect(more.getAttribute('aria-expanded')).toBe('false')
 
@@ -494,7 +494,7 @@ withTemplate('a configured install', () => {
     await user.click(screen.getByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
 
-    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    await user.click(screen.getByRole('button', { name: /Calendario/ }))
     await screen.findByText('Totale settimana')
     expect(screen.queryByRole('button', { name: 'Mostra tutto' })).toBeNull()
   })
@@ -565,6 +565,89 @@ withTemplate('a configured install', () => {
     expect((await loadSettings()).customColleagues).toHaveLength(1)
   })
 
+  it('shows a month of work and reaches a day from it', async () => {
+    const user = userEvent.setup()
+    const today = new Date()
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    // Two days in the current month, one of them with overtime.
+    const first = new Date(today.getFullYear(), today.getMonth(), 4)
+    const second = new Date(today.getFullYear(), today.getMonth(), 12)
+
+    await db.entries.bulkPut(
+      [
+        [iso(first), 420, 900],
+        [iso(second), 420, 1020],
+      ].map(([date, start, end], i) => ({
+        id: `m-${i}`,
+        date: date as string,
+        startMinutes: start as number,
+        endMinutes: end as number,
+        extraMinutesOverride: null,
+        project: 'PARCO NORD',
+        section: '',
+        interventionType: 'Correttivo',
+        statusPercent: 100,
+        description: 'Lavoro',
+        technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+        colleagues: [],
+        createdAt: 1,
+        updatedAt: 1,
+      })),
+    )
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+    await user.click(await screen.findByRole('button', { name: 'Mese' }))
+
+    // Month totals: 8h + 10h across two days, 2h of it overtime.
+    expect(await screen.findByText('18h')).toBeTruthy()
+    expect(screen.getByText('2h')).toBeTruthy()
+
+    // The grid prints hours in the cells that have work.
+    const cells = Array.from(document.querySelectorAll('.month-cell.has-work'))
+    expect(cells).toHaveLength(2)
+    expect(cells.map((c) => c.querySelector('.month-hours')!.textContent)).toEqual(['8', '10'])
+    expect(document.querySelectorAll('.month-cell.has-overtime')).toHaveLength(1)
+
+    // Tapping a day goes to it.
+    await user.click(cells[0] as HTMLElement)
+    expect(await screen.findByText('07:00 – 15:00')).toBeTruthy()
+  })
+
+  it('jumps to any month of any year in two taps', async () => {
+    const user = userEvent.setup()
+    await db.entries.put({
+      id: 'old',
+      date: '2025-03-11',
+      startMinutes: 420,
+      endMinutes: 900,
+      extraMinutesOverride: null,
+      project: 'PARCO NORD',
+      section: '',
+      interventionType: 'Correttivo',
+      statusPercent: 100,
+      description: 'Lavoro di un anno fa',
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      colleagues: [],
+      createdAt: 1,
+      updatedAt: 1,
+    })
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+    await user.click(await screen.findByRole('button', { name: 'Mese' }))
+
+    // The title opens the picker; years run back to the oldest entry.
+    await user.click(screen.getByRole('button', { name: /Vai a…/ }))
+    await user.click(await screen.findByRole('button', { name: '2025' }))
+    await user.click(await screen.findByRole('button', { name: 'marzo' }))
+
+    // A day from over a year ago is now on screen with its hours.
+    const worked = await screen.findByText('8')
+    expect(worked.closest('.month-cell')).toBeTruthy()
+  })
+
   it('shows the week view with the days that are still missing', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -573,7 +656,7 @@ withTemplate('a configured install', () => {
     await user.click(await screen.findByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
 
-    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    await user.click(screen.getByRole('button', { name: /Calendario/ }))
     const week = await screen.findByText('Totale settimana')
     expect(week).toBeTruthy()
     // Six of the seven days have nothing in them yet, and say so.
