@@ -12,6 +12,7 @@ import type { Entry } from '../types'
 import type { ScreenProps } from './shared'
 import { Empty, HoursSummary } from '../components/ui'
 import { ExportSheet } from '../components/ExportSheet'
+import { PackRequired } from '../components/PackRequired'
 import { computeHours, formatDuration } from '../lib/time'
 import {
   addDaysISO,
@@ -33,6 +34,7 @@ export default function WeekScreen({
   onGoToDay,
 }: ScreenProps & { onGoToDay: (date: string) => void }) {
   const [exporting, setExporting] = useState(false)
+  const [needsPack, setNeedsPack] = useState(false)
 
   const days = weekDates(selectedDate)
   const entries =
@@ -138,17 +140,21 @@ export default function WeekScreen({
         ) : null}
 
         <div style={{ marginTop: 18 }}>
+          {/* Enabled without a pack on purpose: tapping it explains what is missing and
+              offers to load the file, which a greyed-out button cannot do. */}
           <button
             type="button"
             className="btn btn-primary btn-lg"
-            disabled={!pack || entries.length === 0}
-            onClick={() => setExporting(true)}
+            disabled={entries.length === 0}
+            onClick={() => (pack ? setExporting(true) : setNeedsPack(true))}
           >
             {t.exportButton}
           </button>
           {!pack ? <p className="hint">{t.exportNeedsPack}</p> : null}
         </div>
       </div>
+
+      {needsPack ? <PackRequired t={t} onClose={() => setNeedsPack(false)} /> : null}
 
       {exporting && pack ? (
         <ExportSheet

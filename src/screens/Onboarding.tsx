@@ -111,23 +111,27 @@ export default function Onboarding({
     )
   }
 
+  // The company file is genuinely useful but not a gate. Blocking here would leave a
+  // technician who has not been sent the file yet unable to record anything at all.
   return (
     <Shell
       t={t}
       title={t.needCompanyFileTitle}
       body={t.needCompanyFileBody}
       footer={
-        <button
-          type="button"
-          className="btn btn-primary btn-lg"
-          disabled={!pack}
-          onClick={() => void onUpdate({ onboardingComplete: true })}
-        >
-          {t.start}
-        </button>
+        <div className="stack">
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={() => void onUpdate({ onboardingComplete: true })}
+          >
+            {pack ? t.start : t.skipForNow}
+          </button>
+        </div>
       }
     >
       <PackLoader t={t} label={t.loadCompanyFile} />
+      {pack ? null : <p className="hint">{t.packOptionalHint}</p>}
     </Shell>
   )
 }

@@ -11,7 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, newId, putEntry, deleteEntry as removeEntry } from '../db'
 import type { Entry } from '../types'
 import type { ScreenProps } from './shared'
-import { rememberFromEntry } from './shared'
+import { entrySetup, rememberFromEntry } from './shared'
 import { WeekStrip } from '../components/WeekStrip'
 import { EntryForm, type EntryDraft } from '../components/EntryForm'
 import { Empty, HoursSummary } from '../components/ui'
@@ -52,6 +52,8 @@ export default function DayScreen({
     [weekEntries],
   )
 
+  const setup = useMemo(() => entrySetup(pack, settings), [pack, settings])
+
   const dayTotals = useMemo(() => {
     let total = 0
     let extra = 0
@@ -59,14 +61,14 @@ export default function DayScreen({
       const hours = computeHours(
         entry.startMinutes,
         entry.endMinutes,
-        pack?.defaults.contractualDailyMinutes ?? 480,
+        setup.contractualDailyMinutes,
         entry.extraMinutesOverride,
       )
       total += hours.totalMinutes
       extra += hours.extraMinutes
     }
     return { total, extra }
-  }, [dayEntries, pack])
+  }, [dayEntries, setup])
 
   /** The most recent entry before this day — the basis for "same as yesterday". */
   const previous = useMemo(() => {
@@ -76,26 +78,15 @@ export default function DayScreen({
     return earlier[0] ?? null
   }, [recent, selectedDate])
 
-  if (!pack) {
-    return (
-      <div className="screen">
-        <Header t={t} selectedDate={selectedDate} language={settings.language} />
-        <div className="screen-pad">
-          <Empty title={t.needCompanyFileTitle} hint={t.needCompanyFileBody} />
-        </div>
-      </div>
-    )
-  }
-
   const blankDraft = (): EntryDraft => ({
     id: null,
     date: selectedDate,
-    startMinutes: settings.lastStartMinutes || pack.defaults.startMinutes,
-    endMinutes: settings.lastEndMinutes || pack.defaults.endMinutes,
+    startMinutes: settings.lastStartMinutes || setup.startMinutes,
+    endMinutes: settings.lastEndMinutes || setup.endMinutes,
     extraMinutesOverride: null,
-    project: settings.lastProject || pack.lists.projects[0] || '',
+    project: settings.lastProject || setup.projects[0] || '',
     section: settings.lastSection,
-    interventionType: settings.lastInterventionType || pack.lists.interventionTypes[0] || '',
+    interventionType: settings.lastInterventionType || setup.interventionTypes[0] || '',
     statusPercent: 100,
     description: '',
     colleagues: [],
@@ -210,7 +201,7 @@ export default function DayScreen({
                 <EntryCard
                   key={entry.id}
                   entry={entry}
-                  contractualMinutes={pack.defaults.contractualDailyMinutes}
+                  contractualMinutes={setup.contractualDailyMinutes}
                   extraLabel={t.extraShort}
                   onOpen={() => setDraft(draftFromEntry(entry))}
                 />

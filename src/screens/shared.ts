@@ -115,6 +115,54 @@ export function mergedPeople(fromPack: Person[], custom: Person[]): Person[] {
   return [...fromPack, ...custom.filter((person) => !seen.has(person.name.trim().toLowerCase()))]
 }
 
+/**
+ * What the entry form needs, whether or not a company file has been loaded.
+ *
+ * Without a pack the app still records hours — it just has no lists to offer and no
+ * template to export into. Recording the work is the part a technician cannot postpone;
+ * the spreadsheet can wait until the file arrives.
+ *
+ * Hand-typed values are remembered, so someone working without a pack builds up their
+ * own lists as they go and the app becomes progressively less bare.
+ */
+export interface EntrySetup {
+  projects: string[]
+  sections: string[]
+  interventionTypes: string[]
+  colleagues: Person[]
+  startMinutes: number
+  endMinutes: number
+  contractualDailyMinutes: number
+  emptySectionText: string
+}
+
+/** Used when no company file has been loaded. */
+const WITHOUT_PACK = {
+  startMinutes: 7 * 60,
+  endMinutes: 15 * 60,
+  contractualDailyMinutes: 8 * 60,
+  emptySectionText: 'N/A',
+}
+
+export function entrySetup(pack: CompanyPack | null, settings: Settings): EntrySetup {
+  return {
+    projects: mergedOptions(pack?.lists.projects ?? [], settings.customValues.projects),
+    sections: mergedOptions(pack?.lists.sections ?? [], settings.customValues.sections),
+    interventionTypes: mergedOptions(
+      pack?.lists.interventionTypes ?? [],
+      settings.customValues.interventionTypes,
+    ),
+    colleagues: mergedPeople(pack?.lists.colleagues ?? [], settings.customColleagues).filter(
+      (person) => person.name.trim() !== settings.technician.name.trim(),
+    ),
+    startMinutes: pack?.defaults.startMinutes ?? WITHOUT_PACK.startMinutes,
+    endMinutes: pack?.defaults.endMinutes ?? WITHOUT_PACK.endMinutes,
+    contractualDailyMinutes:
+      pack?.defaults.contractualDailyMinutes ?? WITHOUT_PACK.contractualDailyMinutes,
+    emptySectionText: pack?.sheet.emptySectionText ?? WITHOUT_PACK.emptySectionText,
+  }
+}
+
 /** Everything the technician has added, for the management screen. */
 export function customCounts(settings: Settings): number {
   const { projects, sections, interventionTypes } = settings.customValues
@@ -131,20 +179,27 @@ export function emptyCustom(): CustomValues {
 export function rememberFromEntry(
   settings: Settings,
   entry: Pick<Entry, 'project' | 'section' | 'interventionType' | 'colleagues'>,
-  pack: CompanyPack,
+  pack: CompanyPack | null,
 ): Pick<Settings, 'customValues' | 'customColleagues'> {
+  const fromPack = pack?.lists ?? {
+    projects: [],
+    sections: [],
+    interventionTypes: [],
+    colleagues: [],
+  }
+
   let colleagues = settings.customColleagues
   for (const person of entry.colleagues) {
-    colleagues = rememberPerson(colleagues, person, pack.lists.colleagues)
+    colleagues = rememberPerson(colleagues, person, fromPack.colleagues)
   }
   return {
     customValues: {
-      projects: rememberValue(settings.customValues.projects, entry.project, pack.lists.projects),
-      sections: rememberValue(settings.customValues.sections, entry.section, pack.lists.sections),
+      projects: rememberValue(settings.customValues.projects, entry.project, fromPack.projects),
+      sections: rememberValue(settings.customValues.sections, entry.section, fromPack.sections),
       interventionTypes: rememberValue(
         settings.customValues.interventionTypes,
         entry.interventionType,
-        pack.lists.interventionTypes,
+        fromPack.interventionTypes,
       ),
     },
     customColleagues: colleagues,

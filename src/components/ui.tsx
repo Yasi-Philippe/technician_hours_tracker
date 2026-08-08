@@ -135,8 +135,24 @@ export interface OptionGridProps {
   onChange: (next: string) => void
   /** Label for the escape hatch that lets someone type a value not on the list. */
   otherLabel?: string
+  /** Omit to let the grid size itself from the length of the labels. */
   columns?: 1 | 2 | 4
   placeholder?: string
+}
+
+/**
+ * How many options fit across, judged by the longest label.
+ *
+ * Short codes like "PB07" waste most of a full-width row and turn a list of thirteen
+ * into a long scroll; a wordy label like "Conservazione parco" needs the whole width to
+ * stay readable. Deciding from the content means a pack can change its lists without
+ * anyone revisiting this.
+ */
+function autoColumns(options: string[]): 1 | 2 | 4 {
+  const longest = options.reduce((max, option) => Math.max(max, option.trim().length), 0)
+  if (longest <= 6) return 4
+  if (longest <= 14) return 2
+  return 1
 }
 
 /**
@@ -150,16 +166,17 @@ export function OptionGrid({
   value,
   onChange,
   otherLabel,
-  columns = 1,
+  columns,
   placeholder,
 }: OptionGridProps) {
   const [typing, setTyping] = useState(false)
   const known = options.includes(value)
   const showCustom = typing || (value !== '' && !known)
+  const across = columns ?? autoColumns(options)
 
   return (
     <div className="stack">
-      <div className={`options cols-${columns}`}>
+      <div className={`options cols-${across}`}>
         {options.map((option) => (
           <button
             key={option}

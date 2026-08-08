@@ -14,7 +14,7 @@ import type { CompanyPack, Entry, Person, Settings } from '../types'
 import type { Strings } from '../i18n'
 import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
 import { Field, OptionGrid, Sheet, TimeBox } from './ui'
-import { mergedOptions, mergedPeople, optionsWith, recentDescriptions } from '../screens/shared'
+import { entrySetup, optionsWith, recentDescriptions } from '../screens/shared'
 
 const STATUS_CHOICES = [100, 75, 50, 25]
 
@@ -45,7 +45,8 @@ export function EntryForm({
 }: {
   draft: EntryDraft
   setDraft: (next: EntryDraft) => void
-  pack: CompanyPack
+  /** Null until a company file is loaded; the form works either way. */
+  pack: CompanyPack | null
   settings: Settings
   t: Strings
   recentEntries: Entry[]
@@ -53,38 +54,23 @@ export function EntryForm({
   onDelete?: () => void
   onClose: () => void
 }) {
+  const setup = useMemo(() => entrySetup(pack, settings), [pack, settings])
+
   const hours = computeHours(
     draft.startMinutes,
     draft.endMinutes,
-    pack.defaults.contractualDailyMinutes,
+    setup.contractualDailyMinutes,
     draft.extraMinutesOverride,
   )
 
   // Frozen when the form opens. The lists must not shift while the technician is tapping
   // through them, so the current value is folded in once, here, and never again.
   const [options] = useState(() => ({
-    projects: optionsWith(
-      mergedOptions(pack.lists.projects, settings.customValues.projects),
-      draft.project,
-    ),
-    sections: optionsWith(
-      mergedOptions(pack.lists.sections, settings.customValues.sections),
-      draft.section,
-    ),
-    types: optionsWith(
-      mergedOptions(pack.lists.interventionTypes, settings.customValues.interventionTypes),
-      draft.interventionType,
-    ),
+    projects: optionsWith(setup.projects, draft.project),
+    sections: optionsWith(setup.sections, draft.section),
+    types: optionsWith(setup.interventionTypes, draft.interventionType),
   }))
   const suggestions = useMemo(() => recentDescriptions(recentEntries), [recentEntries])
-
-  const colleaguePool = useMemo(
-    () =>
-      mergedPeople(pack.lists.colleagues, settings.customColleagues).filter(
-        (person) => person.name.trim() !== settings.technician.name.trim(),
-      ),
-    [pack.lists.colleagues, settings.customColleagues, settings.technician.name],
-  )
 
   return (
     <Sheet
@@ -136,7 +122,7 @@ export function EntryForm({
         setDraft={setDraft}
         t={t}
         hours={hours}
-        contractualMinutes={pack.defaults.contractualDailyMinutes}
+        contractualMinutes={setup.contractualDailyMinutes}
       />
 
       <Field label={t.project}>
@@ -154,7 +140,7 @@ export function EntryForm({
           value={draft.section}
           onChange={(section) => setDraft({ ...draft, section })}
           otherLabel={t.otherValue}
-          placeholder={pack.sheet.emptySectionText}
+          placeholder={setup.emptySectionText}
         />
       </Field>
 
@@ -191,7 +177,7 @@ export function EntryForm({
 
       <ColleaguePicker
         t={t}
-        pool={colleaguePool}
+        pool={setup.colleagues}
         selected={draft.colleagues}
         onChange={(colleagues) => setDraft({ ...draft, colleagues })}
       />

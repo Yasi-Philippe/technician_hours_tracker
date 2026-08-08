@@ -80,7 +80,7 @@ describe('a blank install', () => {
     expect(await screen.findByText('Bienvenido')).toBeTruthy()
   })
 
-  it('will not let a technician start without the company file', async () => {
+  it('lets a technician start without the company file', async () => {
     const user = userEvent.setup()
     render(<App />)
     await screen.findByText('Benvenuto')
@@ -89,8 +89,63 @@ describe('a blank install', () => {
     await user.type(await screen.findByPlaceholderText('Nome e cognome'), 'Mario Rossi')
     await user.click(screen.getByRole('button', { name: 'Continua' }))
 
-    const start = await screen.findByRole('button', { name: 'Inizia' })
-    expect((start as HTMLButtonElement).disabled).toBe(true)
+    // No file yet, so the step offers to move on rather than blocking.
+    const skip = await screen.findByRole('button', { name: 'Per ora salta' })
+    expect((skip as HTMLButtonElement).disabled).toBe(false)
+    await user.click(skip)
+
+    // Straight into the app, able to record hours.
+    expect(await screen.findByRole('button', { name: 'Aggiungi' })).toBeTruthy()
+  })
+
+  it('records a full day with no company file at all', async () => {
+    const user = userEvent.setup()
+    await saveSettings({
+      ...defaultSettings(),
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      onboardingComplete: true,
+    })
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    // Falls back to the standard shift even with no pack to declare one.
+    expect(await screen.findByDisplayValue('07:00')).toBeTruthy()
+    expect(screen.getByDisplayValue('15:00')).toBeTruthy()
+
+    // No lists to offer, so everything is typed — and remembered for next time.
+    await user.click((await screen.findAllByRole('button', { name: 'Altro…' }))[0]!)
+    await user.type(document.querySelector('.stack input.input') as HTMLInputElement, 'PARCO OVEST')
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    const [entry] = await db.entries.toArray()
+    expect(entry!.project).toBe('PARCO OVEST')
+    expect((await loadSettings()).customValues.projects).toEqual(['PARCO OVEST'])
+  })
+
+  it('explains what is missing instead of a dead export button', async () => {
+    const user = userEvent.setup()
+    await saveSettings({
+      ...defaultSettings(),
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      onboardingComplete: true,
+    })
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    const exportButton = await screen.findByRole('button', { name: 'Crea il file Excel' })
+    // Enabled, so tapping it can explain rather than silently doing nothing.
+    expect((exportButton as HTMLButtonElement).disabled).toBe(false)
+    await user.click(exportButton)
+
+    expect(await screen.findByText('Prima serve il file aziendale')).toBeTruthy()
+    // Loadable on the spot, and it says who to ask if that does not help.
+    expect(screen.getByRole('button', { name: 'Apri il file aziendale' })).toBeTruthy()
+    expect(screen.getByText(/contatta l’amministratore/)).toBeTruthy()
   })
 
   it('refuses to continue without a name', async () => {
@@ -240,6 +295,22 @@ withTemplate('a configured install', () => {
 
     const card = (await screen.findByText('07:00 – 15:00')).closest('.entry')!
     expect(card.querySelector('.entry-hours')!.textContent!.trim()).toBe('8h')
+  })
+
+  it('lays short codes out in a grid and wordy labels full width', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    const gridOf = (label: string) =>
+      screen.getByRole('button', { name: label }).parentElement!.className
+
+    // "PB01" style codes: four across, so thirteen of them are not a long scroll.
+    expect(gridOf('A1')).toContain('cols-4')
+    // "Conservazione parco" needs the full width to stay readable.
+    expect(gridOf('Conservazione parco')).toContain('cols-1')
+    // "LATERA/PIANSANO" length projects also stay full width.
+    expect(gridOf('PARCO NORD')).toContain('cols-2')
   })
 
   it('never moves an option when it is selected', async () => {

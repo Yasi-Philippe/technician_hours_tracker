@@ -37,6 +37,14 @@ const it = {
   needCompanyFileBody:
     'Apri il file che ti ha inviato la tua azienda. Contiene i progetti e il modello del rapporto.',
   loadCompanyFile: 'Apri il file aziendale',
+  skipForNow: 'Per ora salta',
+  packOptionalHint:
+    'Senza questo file puoi già registrare le ore. Ti servirà solo per creare l’Excel, e puoi caricarlo più tardi dalle impostazioni.',
+  exportNeedsPackTitle: 'Prima serve il file aziendale',
+  exportNeedsPackBody:
+    'L’Excel usa il modello della tua azienda, quindi senza quel file non si può creare. Se non ce l’hai, chiedilo al tuo responsabile.',
+  exportNeedsPackAdmin:
+    'Se hai già caricato il file e vedi ancora questo messaggio, contatta l’amministratore.',
   companyFileLoaded: 'File aziendale caricato',
   nameRequired: 'Scrivi il tuo nome per continuare',
 
@@ -194,6 +202,14 @@ const es: Strings = {
   needCompanyFileBody:
     'Abre el archivo que te ha enviado tu empresa. Contiene los proyectos y la plantilla del parte.',
   loadCompanyFile: 'Abrir el archivo de la empresa',
+  skipForNow: 'Saltar por ahora',
+  packOptionalHint:
+    'Sin este archivo ya puedes registrar las horas. Solo hace falta para crear el Excel, y puedes cargarlo más tarde desde los ajustes.',
+  exportNeedsPackTitle: 'Antes hace falta el archivo de la empresa',
+  exportNeedsPackBody:
+    'El Excel usa la plantilla de tu empresa, así que sin ese archivo no se puede crear. Si no lo tienes, pídeselo a tu responsable.',
+  exportNeedsPackAdmin:
+    'Si ya has cargado el archivo y sigues viendo este mensaje, contacta con el administrador.',
   companyFileLoaded: 'Archivo de la empresa cargado',
   nameRequired: 'Escribe tu nombre para continuar',
 
