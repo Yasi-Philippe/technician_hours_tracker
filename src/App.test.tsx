@@ -173,6 +173,44 @@ withTemplate('a configured install', () => {
     expect(entry!.extraMinutesOverride).toBeNull()
   })
 
+  it('never moves an option when it is selected', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    const order = () =>
+      ['Conservazione parco', 'Correttivo', 'Preventivo'].map((label) =>
+        Array.from(document.querySelectorAll('.option')).indexOf(
+          screen.getByRole('button', { name: label }),
+        ),
+      )
+
+    const before = order()
+    // The third option is the one that used to jump into second place when tapped.
+    await user.click(screen.getByRole('button', { name: 'Preventivo' }))
+    expect(order()).toEqual(before)
+
+    await user.click(screen.getByRole('button', { name: 'Conservazione parco' }))
+    expect(order()).toEqual(before)
+  })
+
+  it('keeps the pack order even after a different value was used last', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // Use the last option, save, then reopen: the list must look the way it always does.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Preventivo' }))
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    const labels = Array.from(document.querySelectorAll('.option'))
+      .map((el) => el.textContent)
+      .filter((text) => text && ['Conservazione parco', 'Correttivo', 'Preventivo'].includes(text))
+    expect(labels).toEqual(['Conservazione parco', 'Correttivo', 'Preventivo'])
+  })
+
   it('remembers the choices so the next day starts from the last one', async () => {
     const user = userEvent.setup()
     render(<App />)

@@ -14,7 +14,7 @@ import type { CompanyPack, Entry, Person, Settings } from '../types'
 import type { Strings } from '../i18n'
 import { computeHours, formatDuration } from '../lib/time'
 import { Field, OptionGrid, Sheet, TimeBox } from './ui'
-import { orderByRecent, recentDescriptions } from '../screens/shared'
+import { optionsWith, recentDescriptions } from '../screens/shared'
 
 const STATUS_CHOICES = [100, 75, 50, 25]
 
@@ -60,23 +60,13 @@ export function EntryForm({
     draft.extraMinutesOverride,
   )
 
-  const projects = useMemo(
-    () => orderByRecent(pack.lists.projects, settings.lastProject, draft.project),
-    [pack.lists.projects, settings.lastProject, draft.project],
-  )
-  const sections = useMemo(
-    () => orderByRecent(pack.lists.sections, settings.lastSection, draft.section),
-    [pack.lists.sections, settings.lastSection, draft.section],
-  )
-  const types = useMemo(
-    () =>
-      orderByRecent(
-        pack.lists.interventionTypes,
-        settings.lastInterventionType,
-        draft.interventionType,
-      ),
-    [pack.lists.interventionTypes, settings.lastInterventionType, draft.interventionType],
-  )
+  // Frozen when the form opens. The lists must not shift while the technician is tapping
+  // through them, so the current value is folded in once, here, and never again.
+  const [options] = useState(() => ({
+    projects: optionsWith(pack.lists.projects, draft.project),
+    sections: optionsWith(pack.lists.sections, draft.section),
+    types: optionsWith(pack.lists.interventionTypes, draft.interventionType),
+  }))
   const suggestions = useMemo(() => recentDescriptions(recentEntries), [recentEntries])
 
   const colleaguePool = useMemo(
@@ -136,7 +126,7 @@ export function EntryForm({
 
       <Field label={t.project}>
         <OptionGrid
-          options={projects}
+          options={options.projects}
           value={draft.project}
           onChange={(project) => setDraft({ ...draft, project })}
           otherLabel={t.otherValue}
@@ -145,7 +135,7 @@ export function EntryForm({
 
       <Field label={t.section}>
         <OptionGrid
-          options={sections}
+          options={options.sections}
           value={draft.section}
           onChange={(section) => setDraft({ ...draft, section })}
           otherLabel={t.otherValue}
@@ -155,7 +145,7 @@ export function EntryForm({
 
       <Field label={t.interventionType}>
         <OptionGrid
-          options={types}
+          options={options.types}
           value={draft.interventionType}
           onChange={(interventionType) => setDraft({ ...draft, interventionType })}
           otherLabel={t.otherValue}
