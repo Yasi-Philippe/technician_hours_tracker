@@ -10,6 +10,7 @@ import { useState, type ReactNode } from 'react'
 import type { CompanyPack, Language, Settings } from '../types'
 import { LANGUAGE_NAMES, strings } from '../i18n'
 import { Credit, Field } from '../components/ui'
+import { Logo } from '../components/Logo'
 import { PackLoader } from '../components/PackLoader'
 
 export default function Onboarding({
@@ -161,7 +162,7 @@ function Shell({
       <div className="screen" style={{ paddingBottom: 0 }}>
         <div className="onboarding">
           <div className="onboarding-body">
-            <div className="onboarding-mark" />
+            <Logo size={52} />
             <h1>{title}</h1>
             {body ? <p>{body}</p> : null}
             {children}

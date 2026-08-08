@@ -18,6 +18,7 @@ import { bytesToBase64 } from '../lib/base64'
 import { columnLetter, readHeaderRow } from '../lib/xlsx'
 import { PackError, parsePack, serialisePack } from '../lib/pack'
 import { downloadBlob } from '../components/ui'
+import { Logo } from '../components/Logo'
 import { formatClock, parseClock } from '../lib/time'
 
 /** Columns without which the report would be meaningless. */
@@ -240,7 +241,7 @@ export default function PackBuilder() {
   return (
     <div className="builder">
       <header className="builder-head">
-        <div className="onboarding-mark" />
+        <Logo size={44} />
         <h1>Company Pack Builder</h1>
         <p>
           Turns a company's Excel template and its lists into the single file a technician

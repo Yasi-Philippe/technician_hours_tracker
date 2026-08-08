@@ -47,7 +47,9 @@ export default defineConfig({
           { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: './icon-512.png', sizes: '512x512', type: 'image/png' },
           {
-            src: './icon-512.png',
+            // Its own artwork: the OS applies its own mask, so this one is full-bleed
+            // with the mark pulled inside the safe circle.
+            src: './icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

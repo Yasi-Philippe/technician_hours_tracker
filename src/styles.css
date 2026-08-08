@@ -1367,10 +1367,7 @@ textarea.input {
   background: var(--paper);
 }
 
-.onboarding-mark {
-  width: 44px;
-  height: 4px;
-  background: var(--accent);
+.onboarding-body > svg {
   margin-bottom: 24px;
 }
 
