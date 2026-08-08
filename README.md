@@ -1,7 +1,7 @@
-# Technician Hours Tracker
+# Cronos
 
 An offline-first web app for field technicians to record the hours they have worked and
-produce the weekly spreadsheet their office expects.
+produce the spreadsheet their office expects.
 
 Built for people who are not comfortable with technology and do not want to spend their
 evening filling in a spreadsheet. A standard day should take a couple of taps.
@@ -10,11 +10,13 @@ evening filling in a spreadsheet. A standard day should take a couple of taps.
 
 - Record a day: start time, end time, project, section, intervention type, status and a
   short description. Overtime is worked out automatically, never typed.
-- Add colleagues who were on the same job — each one becomes their own row in the report.
+- Add colleagues who were on the same job — they share the one row, so the hours are
+  never counted twice.
 - Review a whole week at a glance, with the days you have not filled in shown as missing.
-- See totals and charts: hours per day, per project, per intervention type, with overtime
-  broken out.
-- Export a finished `.xlsx` for any week, using your organisation's own template.
+- See totals and charts over a week, a month or a year, with overtime broken out.
+- Browse any day you have ever worked from a month calendar.
+- Export a finished `.xlsx` for a week, a month or the whole history, using your
+  organisation's own template.
 - Back up everything to a single file, and restore or merge it on another device.
 - Works with no signal at all, and installs to the home screen like a normal app.
 - Available in Italian and Spanish.

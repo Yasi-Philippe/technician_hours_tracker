@@ -13,7 +13,7 @@
 import type { Language } from './types'
 
 const it = {
-  appName: 'Ore',
+  appName: 'Cronos',
   appTagline: 'Registro delle ore',
 
   // Navigation
@@ -201,7 +201,7 @@ const it = {
 export type Strings = { readonly [K in keyof typeof it]: string }
 
 const es: Strings = {
-  appName: 'Horas',
+  appName: 'Cronos',
   appTagline: 'Registro de horas',
 
   navToday: 'Hoy',

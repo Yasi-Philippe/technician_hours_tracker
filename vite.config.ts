@@ -34,8 +34,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/pack-builder/],
       },
       manifest: {
-        name: 'Ore — Registro ore',
-        short_name: 'Ore',
+        name: 'Cronos',
+        short_name: 'Cronos',
         description: 'Registro delle ore lavorate',
         theme_color: '#0a0a0a',
         background_color: '#ffffff',
