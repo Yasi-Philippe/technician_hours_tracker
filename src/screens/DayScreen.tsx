@@ -17,6 +17,7 @@ import { EntryForm, type EntryDraft } from '../components/EntryForm'
 import { Empty, HoursSummary } from '../components/ui'
 import { computeHours, formatClock, formatDuration } from '../lib/time'
 import { formatLongDate, todayISO, weekDates } from '../lib/dates'
+import { holidaysOn } from '../lib/holidays'
 
 export default function DayScreen({
   settings,
@@ -175,6 +176,8 @@ export default function DayScreen({
       />
 
       <div className="screen-pad">
+        <HolidayNotice date={selectedDate} t={t} />
+
         {dayEntries.length > 0 ? (
           <>
             <div className="totals" style={{ marginBottom: 14 }}>
@@ -261,6 +264,35 @@ function Header({
         <p className="topbar-title">{isToday ? t.today : t.navToday}</p>
         <p className="topbar-sub">{formatLongDate(selectedDate, language)}</p>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Says when a day is a public holiday, and where.
+ *
+ * Italian holidays are days nobody is expected on site, and the calendar already marks
+ * them. Spanish ones are ordinary working days here — but the crew is Spanish and the
+ * contract spans both countries, so it is worth knowing that an office or a colleague
+ * back home may be shut. Stated, never coloured.
+ */
+function HolidayNotice({ date, t }: { date: string; t: ScreenProps['t'] }) {
+  const holidays = holidaysOn(date)
+  if (holidays.length === 0) return null
+
+  return (
+    <div className="notices">
+      {holidays.map((holiday) => (
+        <p
+          key={holiday.country}
+          className={`notice${holiday.country === 'IT' ? ' is-closed-day' : ''}`}
+        >
+          <span className="notice-label">
+            {holiday.country === 'IT' ? t.holidayItaly : t.holidaySpain}
+          </span>
+          {holiday.name}
+        </p>
+      ))}
     </div>
   )
 }

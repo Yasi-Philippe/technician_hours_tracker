@@ -565,6 +565,23 @@ withTemplate('a configured install', () => {
     expect((await loadSettings()).customColleagues).toHaveLength(1)
   })
 
+  /** The cell for a day of the month on screen, ignoring the faded neighbouring months. */
+  const monthCell = (day: string) =>
+    Array.from(document.querySelectorAll('.month-cell')).find(
+      (el) =>
+        el.querySelector('.month-num')!.textContent === day &&
+        !el.classList.contains('is-outside'),
+    )!
+
+  /** Open the jump sheet and go to a month. The year chips only appear when there is
+   *  more than one year of history, so pick one only if it is offered. */
+  const jumpTo = async (user: ReturnType<typeof userEvent.setup>, year: string, month: string) => {
+    await user.click(screen.getByRole('button', { name: /Vai a…/ }))
+    const yearChip = screen.queryByRole('button', { name: year })
+    if (yearChip) await user.click(yearChip)
+    await user.click(await screen.findByRole('button', { name: month }))
+  }
+
   it('shows a month of work and reaches a day from it', async () => {
     const user = userEvent.setup()
     const today = new Date()
@@ -615,6 +632,44 @@ withTemplate('a configured install', () => {
     expect(await screen.findByText('07:00 – 15:00')).toBeTruthy()
   })
 
+  it('marks weekends and Italian holidays as non-working, but not Spanish ones', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+    await user.click(await screen.findByRole('button', { name: 'Mese' }))
+
+    // October 2026: the 12th is a Spanish national holiday and an ordinary Monday in Italy.
+    await jumpTo(user, '2026', 'ottobre')
+
+    // Saturday and Sunday are closed.
+    expect(monthCell('10').classList.contains('is-closed')).toBe(true)
+    expect(monthCell('11').classList.contains('is-closed')).toBe(true)
+    // The Spanish national day is flagged but still a working day.
+    expect(monthCell('12').classList.contains('is-closed')).toBe(false)
+    expect(monthCell('12').classList.contains('is-spanish-holiday')).toBe(true)
+
+    // 1 November is Ognissanti in Italy — closed.
+    await jumpTo(user, '2026', 'novembre')
+    expect(monthCell('1').classList.contains('is-closed')).toBe(true)
+  })
+
+  it('names the holiday on the day screen, for both countries', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+    await user.click(await screen.findByRole('button', { name: 'Mese' }))
+
+    // 6 January is Epiphany in both countries.
+    await jumpTo(user, '2026', 'gennaio')
+    await user.click(monthCell('6') as HTMLElement)
+
+    expect(await screen.findByText('Epifania')).toBeTruthy()
+    expect(screen.getByText('Epifanía del Señor')).toBeTruthy()
+    // Only the Italian one is styled as a closed day.
+    const notices = Array.from(document.querySelectorAll('.notice'))
+    expect(notices.filter((n) => n.classList.contains('is-closed-day'))).toHaveLength(1)
+  })
+
   it('jumps to any month of any year in two taps', async () => {
     const user = userEvent.setup()
     await db.entries.put({
@@ -639,13 +694,13 @@ withTemplate('a configured install', () => {
     await user.click(await screen.findByRole('button', { name: 'Mese' }))
 
     // The title opens the picker; years run back to the oldest entry.
-    await user.click(screen.getByRole('button', { name: /Vai a…/ }))
-    await user.click(await screen.findByRole('button', { name: '2025' }))
-    await user.click(await screen.findByRole('button', { name: 'marzo' }))
+    await jumpTo(user, '2025', 'marzo')
 
-    // A day from over a year ago is now on screen with its hours.
-    const worked = await screen.findByText('8')
-    expect(worked.closest('.month-cell')).toBeTruthy()
+    // The day from over a year ago is on screen, with its hours in the cell.
+    await waitFor(() =>
+      expect(monthCell('11').querySelector('.month-hours')!.textContent).toBe('8'),
+    )
+    expect(monthCell('11').classList.contains('has-work')).toBe(true)
   })
 
   it('shows the week view with the days that are still missing', async () => {

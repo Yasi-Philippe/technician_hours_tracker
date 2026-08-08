@@ -16,6 +16,7 @@ import { PackRequired } from '../components/PackRequired'
 import { MonthGrid, type DayTotals } from '../components/MonthGrid'
 import { MonthPicker } from '../components/MonthPicker'
 import { computeHours, formatDuration } from '../lib/time'
+import { isNonWorkingDay } from '../lib/holidays'
 import {
   addDaysISO,
   addMonthsISO,
@@ -24,7 +25,6 @@ import {
   formatDayShort,
   formatMonthYear,
   isoWeek,
-  isWeekend,
   startOfMonthISO,
   todayISO,
   weekDates,
@@ -361,7 +361,7 @@ function DayRow({
     'dayrow',
     empty ? 'is-empty' : '',
     date === todayISO() ? 'is-today' : '',
-    isWeekend(date) ? 'is-weekend' : '',
+    isNonWorkingDay(date) ? 'is-closed' : '',
   ]
     .filter(Boolean)
     .join(' ')

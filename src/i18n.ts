@@ -54,6 +54,8 @@ const it = {
   newEntry: 'Nuovo rapporto',
   editEntry: 'Modifica rapporto',
   sameAsYesterday: 'Come ieri',
+  holidayItaly: 'Festivo in Italia',
+  holidaySpain: 'Festivo in Spagna',
   noEntriesToday: 'Nessun rapporto per questo giorno',
   noEntriesTodayHint: 'Tocca Aggiungi per registrare le ore.',
 
@@ -225,6 +227,8 @@ const es: Strings = {
   newEntry: 'Nuevo parte',
   editEntry: 'Editar parte',
   sameAsYesterday: 'Como ayer',
+  holidayItaly: 'Festivo en Italia',
+  holidaySpain: 'Festivo en España',
   noEntriesToday: 'No hay partes para este día',
   noEntriesTodayHint: 'Toca Añadir para registrar las horas.',
 

@@ -6,7 +6,8 @@
  */
 
 import type { Language } from '../types'
-import { formatDayNumber, formatDayShort, isWeekend, todayISO, weekDates } from '../lib/dates'
+import { formatDayNumber, formatDayShort, todayISO, weekDates } from '../lib/dates'
+import { isNonWorkingDay } from '../lib/holidays'
 
 export function WeekStrip({
   anchor,
@@ -29,7 +30,7 @@ export function WeekStrip({
           'daychip',
           date === selected ? 'is-selected' : '',
           date === today ? 'is-today' : '',
-          isWeekend(date) ? 'is-weekend' : '',
+          isNonWorkingDay(date) ? 'is-closed' : '',
         ]
           .filter(Boolean)
           .join(' ')

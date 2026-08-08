@@ -202,12 +202,20 @@ select {
   background: var(--paper);
 }
 
-.daychip.is-weekend .daychip-letter {
-  opacity: 0.35;
+/*
+ * Red marks days nobody is expected on site: Saturdays, Sundays and Italian public
+ * holidays. It is the one colour in the app, so it says exactly one thing.
+ */
+.daychip.is-closed .daychip-number,
+.daychip.is-closed .daychip-letter {
+  color: var(--accent);
+  opacity: 1;
 }
 
-.daychip.is-today .daychip-number {
-  color: var(--accent);
+/* Today is marked by an outline rather than a colour, so it can coincide with a
+   non-working day without the two fighting over the same signal. */
+.daychip.is-today {
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 70%);
 }
 
 .daychip.is-selected {
@@ -220,11 +228,11 @@ select {
 }
 
 .daychip.is-selected .daychip-dot.filled {
-  background: var(--accent);
+  background: var(--ink);
 }
 
-.daychip.is-selected.is-today .daychip-number {
-  color: var(--accent);
+.daychip.is-selected.is-today {
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 /* ------------------------------------------------------------- bottom nav */
@@ -978,8 +986,15 @@ textarea.input {
   font-variant-numeric: tabular-nums;
 }
 
-.dayrow.is-today .dayrow-num {
+.dayrow.is-closed .dayrow-num,
+.dayrow.is-closed .dayrow-dow {
   color: var(--accent);
+}
+
+.dayrow.is-today .dayrow-num {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
 }
 
 .dayrow-main {
@@ -1481,12 +1496,38 @@ textarea.input {
 }
 
 .month-cell.has-overtime .month-hours {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Non-working days: weekends and Italian public holidays. */
+.month-cell.is-closed .month-num {
   color: var(--accent);
 }
 
+/* A Spanish-only holiday is a normal working day here, so it gets a quiet marker
+   rather than a colour. */
+.month-cell.is-spanish-holiday::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-ghost);
+}
+
+.month-cell {
+  position: relative;
+}
+
 .month-cell.is-today .month-num {
-  color: var(--accent);
-  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 2px;
+  font-weight: 800;
 }
 
 .month-cell.is-selected {
@@ -1498,10 +1539,8 @@ textarea.input {
   color: #fff;
 }
 
-.month-cell.is-selected.is-today .month-num {
-  color: #fff;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.month-cell.is-selected.is-closed .month-num {
+  color: #ff8ea0;
 }
 
 .month-cell:focus-visible {
@@ -1539,4 +1578,40 @@ textarea.input {
   content: ' ▾';
   font-size: 14px;
   opacity: 0.6;
+}
+
+/* ------------------------------------------------------------------ notices */
+
+.notices {
+  margin-bottom: 14px;
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-sunk);
+  border-radius: var(--radius);
+  font-size: 15px;
+  color: var(--ink-strong);
+}
+
+.notice + .notice {
+  margin-top: 8px;
+}
+
+.notice.is-closed-day {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+}
+
+.notice-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 2px;
 }

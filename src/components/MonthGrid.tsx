@@ -9,13 +9,8 @@
  * the hours are what makes it a record.
  */
 
-import {
-  formatDayNumber,
-  isSameMonthISO,
-  isWeekend,
-  monthMatrix,
-  todayISO,
-} from '../lib/dates'
+import { formatDayNumber, isSameMonthISO, monthMatrix, todayISO } from '../lib/dates'
+import { isNonWorkingDay, spanishHoliday } from '../lib/holidays'
 
 export interface DayTotals {
   totalMinutes: number
@@ -57,7 +52,8 @@ export function MonthGrid({
             outside ? 'is-outside' : '',
             date === selected ? 'is-selected' : '',
             date === today ? 'is-today' : '',
-            isWeekend(date) ? 'is-weekend' : '',
+            isNonWorkingDay(date) ? 'is-closed' : '',
+            spanishHoliday(date) ? 'is-spanish-holiday' : '',
             totals ? 'has-work' : '',
             totals && totals.extraMinutes > 0 ? 'has-overtime' : '',
           ]
