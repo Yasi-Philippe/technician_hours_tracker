@@ -14,7 +14,7 @@ import type { CompanyPack, Entry, Person, Settings } from '../types'
 import type { Strings } from '../i18n'
 import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
 import { Field, OptionGrid, Sheet, TimeBox } from './ui'
-import { optionsWith, recentDescriptions } from '../screens/shared'
+import { mergedOptions, mergedPeople, optionsWith, recentDescriptions } from '../screens/shared'
 
 const STATUS_CHOICES = [100, 75, 50, 25]
 
@@ -63,16 +63,25 @@ export function EntryForm({
   // Frozen when the form opens. The lists must not shift while the technician is tapping
   // through them, so the current value is folded in once, here, and never again.
   const [options] = useState(() => ({
-    projects: optionsWith(pack.lists.projects, draft.project),
-    sections: optionsWith(pack.lists.sections, draft.section),
-    types: optionsWith(pack.lists.interventionTypes, draft.interventionType),
+    projects: optionsWith(
+      mergedOptions(pack.lists.projects, settings.customValues.projects),
+      draft.project,
+    ),
+    sections: optionsWith(
+      mergedOptions(pack.lists.sections, settings.customValues.sections),
+      draft.section,
+    ),
+    types: optionsWith(
+      mergedOptions(pack.lists.interventionTypes, settings.customValues.interventionTypes),
+      draft.interventionType,
+    ),
   }))
   const suggestions = useMemo(() => recentDescriptions(recentEntries), [recentEntries])
 
   const colleaguePool = useMemo(
     () =>
-      dedupePeople([...pack.lists.colleagues, ...settings.customColleagues]).filter(
-        (person) => person.name !== settings.technician.name,
+      mergedPeople(pack.lists.colleagues, settings.customColleagues).filter(
+        (person) => person.name.trim() !== settings.technician.name.trim(),
       ),
     [pack.lists.colleagues, settings.customColleagues, settings.technician.name],
   )
@@ -450,14 +459,3 @@ function ColleaguePicker({
   )
 }
 
-function dedupePeople(people: Person[]): Person[] {
-  const seen = new Set<string>()
-  const out: Person[] = []
-  for (const person of people) {
-    const key = person.name.trim()
-    if (key === '' || seen.has(key)) continue
-    seen.add(key)
-    out.push({ name: key, email: person.email })
-  }
-  return out
-}

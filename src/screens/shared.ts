@@ -1,4 +1,4 @@
-import type { CompanyPack, Entry, Settings } from '../types'
+import type { CompanyPack, CustomValues, Entry, Person, Settings } from '../types'
 import type { Strings } from '../i18n'
 import type { ToastState } from '../components/ui'
 
@@ -56,4 +56,97 @@ export function recentDescriptions(entries: Entry[], limit = 8): string[] {
     if (out.length >= limit) break
   }
   return out
+}
+
+// ---------------------------------------------------------------------------
+// Remembered values
+// ---------------------------------------------------------------------------
+
+/**
+ * How many hand-typed values are kept per list.
+ *
+ * Generous, because forgetting something a technician typed is worse than a long list —
+ * but bounded, so a year of typos cannot grow without limit.
+ */
+const REMEMBER_LIMIT = 30
+
+const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Remember a value the technician typed by hand.
+ *
+ * Anything the pack already offers is ignored: the company's own lists are not
+ * duplicated into the technician's. Case and stray spaces are treated as the same value,
+ * so "latera" typed twice does not become two entries.
+ */
+export function rememberValue(existing: string[], value: string, fromPack: string[]): string[] {
+  const trimmed = value.trim()
+  if (trimmed === '') return existing
+  if (fromPack.some((option) => sameText(option, trimmed))) return existing
+  if (existing.some((option) => sameText(option, trimmed))) return existing
+  return [...existing, trimmed].slice(-REMEMBER_LIMIT)
+}
+
+/** Drop a remembered value. Entries that already use it keep their own copy. */
+export function forgetValue(existing: string[], value: string): string[] {
+  return existing.filter((option) => !sameText(option, value))
+}
+
+export function rememberPerson(existing: Person[], person: Person, fromPack: Person[]): Person[] {
+  const name = person.name.trim()
+  if (name === '') return existing
+  if (fromPack.some((other) => sameText(other.name, name))) return existing
+  if (existing.some((other) => sameText(other.name, name))) return existing
+  return [...existing, { name, email: person.email }].slice(-REMEMBER_LIMIT)
+}
+
+export function forgetPerson(existing: Person[], name: string): Person[] {
+  return existing.filter((person) => !sameText(person.name, name))
+}
+
+/** The pack's list followed by whatever the technician has added to it. */
+export function mergedOptions(fromPack: string[], custom: string[]): string[] {
+  const seen = new Set(fromPack.map((option) => option.trim().toLowerCase()))
+  return [...fromPack, ...custom.filter((option) => !seen.has(option.trim().toLowerCase()))]
+}
+
+export function mergedPeople(fromPack: Person[], custom: Person[]): Person[] {
+  const seen = new Set(fromPack.map((person) => person.name.trim().toLowerCase()))
+  return [...fromPack, ...custom.filter((person) => !seen.has(person.name.trim().toLowerCase()))]
+}
+
+/** Everything the technician has added, for the management screen. */
+export function customCounts(settings: Settings): number {
+  const { projects, sections, interventionTypes } = settings.customValues
+  return (
+    projects.length + sections.length + interventionTypes.length + settings.customColleagues.length
+  )
+}
+
+export function emptyCustom(): CustomValues {
+  return { projects: [], sections: [], interventionTypes: [] }
+}
+
+/** Remember every hand-typed value from a saved entry, in one pass. */
+export function rememberFromEntry(
+  settings: Settings,
+  entry: Pick<Entry, 'project' | 'section' | 'interventionType' | 'colleagues'>,
+  pack: CompanyPack,
+): Pick<Settings, 'customValues' | 'customColleagues'> {
+  let colleagues = settings.customColleagues
+  for (const person of entry.colleagues) {
+    colleagues = rememberPerson(colleagues, person, pack.lists.colleagues)
+  }
+  return {
+    customValues: {
+      projects: rememberValue(settings.customValues.projects, entry.project, pack.lists.projects),
+      sections: rememberValue(settings.customValues.sections, entry.section, pack.lists.sections),
+      interventionTypes: rememberValue(
+        settings.customValues.interventionTypes,
+        entry.interventionType,
+        pack.lists.interventionTypes,
+      ),
+    },
+    customColleagues: colleagues,
+  }
 }

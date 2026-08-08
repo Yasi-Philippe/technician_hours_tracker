@@ -428,6 +428,72 @@ withTemplate('a configured install', () => {
     expect(screen.queryByRole('button', { name: 'Mostra tutto' })).toBeNull()
   })
 
+  it('remembers a hand-typed value and offers it next time', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    // "Altro…" on the project list, then a value the pack does not have.
+    await user.click((await screen.findAllByRole('button', { name: 'Altro…' }))[0]!)
+    const custom = document.querySelector('.stack input.input') as HTMLInputElement
+    await user.type(custom, 'PARCO EST')
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    expect((await loadSettings()).customValues.projects).toEqual(['PARCO EST'])
+
+    // Offered as a real choice from then on, after the pack's own projects.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    expect(await screen.findByRole('button', { name: 'PARCO EST' })).toBeTruthy()
+  })
+
+  it('does not remember a value the company file already provides', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'PARCO SUD' }))
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    expect((await loadSettings()).customValues.projects).toEqual([])
+  })
+
+  it('removes a mistyped colleague from settings without touching saved reports', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // Add a colleague by hand, with a typo.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.type(await screen.findByPlaceholderText('Aggiungi collega'), 'Crlos Gallego')
+    await user.click(screen.getByRole('button', { name: '+' }))
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    expect((await loadSettings()).customColleagues.map((p) => p.name)).toEqual(['Crlos Gallego'])
+
+    await user.click(screen.getByRole('button', { name: /Impostazioni/ }))
+    await user.click(await screen.findByRole('button', { name: 'Togli Crlos Gallego' }))
+
+    await waitFor(async () => expect((await loadSettings()).customColleagues).toEqual([]))
+    // The report that already used the name keeps it: correcting a list is not a rewrite.
+    const [entry] = await db.entries.toArray()
+    expect(entry!.colleagues.map((p) => p.name)).toEqual(['Crlos Gallego'])
+  })
+
+  it('treats the same name typed differently as one remembered entry', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    for (const name of ['Luca Bianchi', 'luca bianchi ']) {
+      await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+      await user.type(await screen.findByPlaceholderText('Aggiungi collega'), name)
+      await user.click(screen.getByRole('button', { name: '+' }))
+      await user.click(screen.getByRole('button', { name: 'Salva' }))
+      await waitFor(async () => expect(document.querySelector('.sheet')).toBeNull())
+    }
+
+    expect((await loadSettings()).customColleagues).toHaveLength(1)
+  })
+
   it('shows the week view with the days that are still missing', async () => {
     const user = userEvent.setup()
     render(<App />)

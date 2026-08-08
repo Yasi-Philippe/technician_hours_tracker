@@ -6,7 +6,7 @@
  */
 
 import Dexie, { type Table } from 'dexie'
-import type { CompanyPack, Entry, Person, Settings } from './types'
+import type { CompanyPack, CustomValues, Entry, Person, Settings } from './types'
 import { weekDates } from './lib/dates'
 import { parsePack } from './lib/pack'
 
@@ -40,14 +40,26 @@ export function defaultSettings(): Settings {
     lastStartMinutes: 7 * 60,
     lastEndMinutes: 15 * 60,
     customColleagues: [],
+    customValues: emptyCustomValues(),
     onboardingComplete: false,
     lastBackupAt: null,
   }
 }
 
+export function emptyCustomValues(): CustomValues {
+  return { projects: [], sections: [], interventionTypes: [] }
+}
+
 export async function loadSettings(): Promise<Settings> {
   const stored = await db.settings.get('settings')
-  return stored ? { ...defaultSettings(), ...stored } : defaultSettings()
+  if (!stored) return defaultSettings()
+  // Merged field by field so settings saved before a key existed still load.
+  return {
+    ...defaultSettings(),
+    ...stored,
+    customColleagues: stored.customColleagues ?? [],
+    customValues: { ...emptyCustomValues(), ...(stored.customValues ?? {}) },
+  }
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {

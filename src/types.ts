@@ -45,6 +45,16 @@ export interface Entry {
   updatedAt: number
 }
 
+/** The hand-typed additions to each pick list. */
+export interface CustomValues {
+  projects: string[]
+  sections: string[]
+  interventionTypes: string[]
+}
+
+/** Which remembered list a management control is operating on. */
+export type CustomListKey = keyof CustomValues | 'colleagues'
+
 export interface Settings {
   id: 'settings'
   technician: Person
@@ -55,8 +65,13 @@ export interface Settings {
   lastInterventionType: string
   lastStartMinutes: number
   lastEndMinutes: number
-  /** Colleagues typed by hand, remembered alongside the ones from the pack. */
+  /**
+   * Values typed by hand rather than chosen from the pack, remembered so they can be
+   * offered again. Kept separate from the pack's own lists: the pack is the company's
+   * to change, these belong to the technician and only they can remove them.
+   */
   customColleagues: Person[]
+  customValues: CustomValues
   onboardingComplete: boolean
   lastBackupAt: number | null
 }

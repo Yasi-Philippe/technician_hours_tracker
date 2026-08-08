@@ -135,6 +135,16 @@ const it = {
   importConfirmBody: 'I rapporti nuovi saranno aggiunti. Quelli più recenti restano.',
 
   // Settings
+  myEntries: 'Le voci che hai aggiunto tu',
+  myEntriesBody:
+    'Quello che hai scritto a mano viene ricordato per la prossima volta. Se hai sbagliato a scrivere qualcosa, toglilo da qui.',
+  myEntriesNone: 'Non hai ancora aggiunto niente a mano',
+  myEntriesProjects: 'Progetti',
+  myEntriesSections: 'Sezioni',
+  myEntriesTypes: 'Tipi di intervento',
+  myEntriesColleagues: 'Colleghi',
+  removeEntry: 'Togli',
+  removedEntry: 'Tolto',
   language: 'Lingua',
   technician: 'Tecnico',
   companyFile: 'File aziendale',
@@ -276,6 +286,16 @@ const es: Strings = {
   importConfirmTitle: '¿Cargar estos datos?',
   importConfirmBody: 'Se añadirán los partes nuevos. Los más recientes se mantienen.',
 
+  myEntries: 'Las entradas que has añadido tú',
+  myEntriesBody:
+    'Lo que escribes a mano se recuerda para la próxima vez. Si te has equivocado al escribir algo, quítalo desde aquí.',
+  myEntriesNone: 'Todavía no has añadido nada a mano',
+  myEntriesProjects: 'Proyectos',
+  myEntriesSections: 'Secciones',
+  myEntriesTypes: 'Tipos de intervención',
+  myEntriesColleagues: 'Compañeros',
+  removeEntry: 'Quitar',
+  removedEntry: 'Quitado',
   language: 'Idioma',
   technician: 'Técnico',
   companyFile: 'Archivo de la empresa',

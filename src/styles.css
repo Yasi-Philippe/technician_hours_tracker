@@ -1361,3 +1361,23 @@ textarea.input {
 .reuse-item:active {
   background: var(--paper-sunk);
 }
+
+/* Remove control inside a settings row. Text, not an icon: an ✕ next to a name is
+   ambiguous about what exactly it removes, and this list is about undoing mistakes. */
+.row-remove {
+  appearance: none;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+  border-radius: var(--radius);
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.row-remove:active {
+  background: var(--accent-line);
+}

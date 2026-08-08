@@ -11,6 +11,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, newId, putEntry, deleteEntry as removeEntry } from '../db'
 import type { Entry } from '../types'
 import type { ScreenProps } from './shared'
+import { rememberFromEntry } from './shared'
 import { WeekStrip } from '../components/WeekStrip'
 import { EntryForm, type EntryDraft } from '../components/EntryForm'
 import { Empty, HoursSummary } from '../components/ui'
@@ -143,14 +144,15 @@ export default function DayScreen({
     }
 
     await putEntry(entry)
-    // Remember the choices so tomorrow starts from what today looked like.
+    // Remember the choices so tomorrow starts from what today looked like, and keep any
+    // hand-typed value so it can be offered again — and removed later if it was a typo.
     await onUpdateSettings({
       lastProject: entry.project,
       lastSection: entry.section,
       lastInterventionType: entry.interventionType,
       lastStartMinutes: entry.startMinutes,
       lastEndMinutes: entry.endMinutes,
-      customColleagues: mergeColleagues(settings.customColleagues, entry.colleagues, pack),
+      ...rememberFromEntry(settings, entry, pack),
     })
 
     setDraft(null)
@@ -327,19 +329,3 @@ function EntryCard({
   )
 }
 
-/** Keep hand-typed colleagues around, but never duplicate what the pack already lists. */
-function mergeColleagues(
-  existing: ScreenProps['settings']['customColleagues'],
-  used: Entry['colleagues'],
-  pack: NonNullable<ScreenProps['pack']>,
-) {
-  const fromPack = new Set(pack.lists.colleagues.map((p) => p.name))
-  const seen = new Set(existing.map((p) => p.name))
-  const out = [...existing]
-  for (const person of used) {
-    if (fromPack.has(person.name) || seen.has(person.name) || person.name.trim() === '') continue
-    seen.add(person.name)
-    out.push(person)
-  }
-  return out.slice(-20)
-}
