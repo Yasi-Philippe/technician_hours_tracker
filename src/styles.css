@@ -907,7 +907,21 @@ textarea.input {
 
 /* ------------------------------------------------------------- week list */
 
+/*
+ * The row is a container, not a button: opening the day and expanding a long
+ * description are two separate actions, and a button inside a button is neither valid
+ * nor tappable in any predictable way.
+ */
 .dayrow {
+  display: block;
+  width: 100%;
+}
+
+.dayrow + .dayrow {
+  border-top: 1px solid var(--line);
+}
+
+.dayrow-open {
   display: flex;
   gap: 14px;
   padding: 14px var(--pad);
@@ -919,8 +933,24 @@ textarea.input {
   align-items: flex-start;
 }
 
-.dayrow + .dayrow {
-  border-top: 1px solid var(--line);
+.dayrow-more {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  /* Sits under the description, clear of the date column. */
+  margin: -6px 0 10px calc(var(--pad) + 60px);
+  min-height: 44px;
+  padding: 0 8px 0 0;
+}
+
+.dayrow-more:active {
+  color: var(--ink);
 }
 
 .dayrow.is-empty .dayrow-main {
@@ -963,12 +993,29 @@ textarea.input {
 }
 
 .dayrow-sub {
+  display: block;
   font-size: 14px;
   color: var(--ink-muted);
   margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Expanded: the row grows to whatever the text needs, one entry per line. */
+.dayrow-sub.is-expanded {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.dayrow-line {
+  display: block;
+}
+
+.dayrow-line + .dayrow-line {
+  margin-top: 4px;
 }
 
 .dayrow-hours {

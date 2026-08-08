@@ -126,6 +126,8 @@ export default function WeekScreen({
               language={settings.language}
               missingLabel={t.missingDay}
               extraLabel={t.extraShort}
+              moreLabel={t.showMore}
+              lessLabel={t.showLess}
               onOpen={() => onGoToDay(date)}
             />
           ))}
@@ -163,6 +165,15 @@ export default function WeekScreen({
   )
 }
 
+/**
+ * Descriptions long enough to be clipped get an explicit way to read them.
+ *
+ * Roughly what fits on one line of a phone. Past this the row offers to open up rather
+ * than quietly cutting the text off, which is the difference between "there is more"
+ * and "that is all there is".
+ */
+const CLIPPED_AT = 60
+
 function DayRow({
   date,
   entries,
@@ -170,6 +181,8 @@ function DayRow({
   language,
   missingLabel,
   extraLabel,
+  moreLabel,
+  lessLabel,
   onOpen,
 }: {
   date: string
@@ -178,8 +191,12 @@ function DayRow({
   language: ScreenProps['settings']['language']
   missingLabel: string
   extraLabel: string
+  moreLabel: string
+  lessLabel: string
   onOpen: () => void
 }) {
+  const [expanded, setExpanded] = useState(false)
+
   let total = 0
   let extra = 0
   for (const entry of entries) {
@@ -194,6 +211,12 @@ function DayRow({
   }
 
   const empty = entries.length === 0
+  const descriptions = entries
+    .map((entry) => entry.description.trim() || entry.interventionType)
+    .filter(Boolean)
+  const joined = descriptions.join(' — ')
+  const clipped = joined.length > CLIPPED_AT
+
   const classes = [
     'dayrow',
     empty ? 'is-empty' : '',
@@ -204,33 +227,53 @@ function DayRow({
     .join(' ')
 
   return (
-    <button type="button" className={classes} onClick={onOpen}>
-      <span className="dayrow-date">
-        <span className="dayrow-dow">{formatDayShort(date, language)}</span>
-        <span className="dayrow-num">{formatDayNumber(date)}</span>
-      </span>
-      <span className="dayrow-main">
-        {empty ? (
-          <span className="dayrow-title">{missingLabel}</span>
-        ) : (
-          <>
-            <span className="dayrow-title">
-              {[...new Set(entries.map((e) => e.project))].join(' · ')}
-            </span>
-            <span className="dayrow-sub">
-              {entries
-                .map((e) => e.description || e.interventionType)
-                .filter(Boolean)
-                .join(' — ')}
-            </span>
-          </>
-        )}
-      </span>
-      {!empty ? (
-        <span className="dayrow-hours">
-          <HoursSummary totalMinutes={total} extraMinutes={extra} extraLabel={extraLabel} />
+    <div className={classes}>
+      {/* The row itself opens the day; expanding is a separate control beneath it, so
+          neither swallows the other's tap. */}
+      <button type="button" className="dayrow-open" onClick={onOpen}>
+        <span className="dayrow-date">
+          <span className="dayrow-dow">{formatDayShort(date, language)}</span>
+          <span className="dayrow-num">{formatDayNumber(date)}</span>
         </span>
+        <span className="dayrow-main">
+          {empty ? (
+            <span className="dayrow-title">{missingLabel}</span>
+          ) : (
+            <>
+              <span className="dayrow-title">
+                {[...new Set(entries.map((e) => e.project))].join(' · ')}
+              </span>
+              {expanded ? (
+                <span className="dayrow-sub is-expanded">
+                  {descriptions.map((description, index) => (
+                    <span className="dayrow-line" key={index}>
+                      {description}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="dayrow-sub">{joined}</span>
+              )}
+            </>
+          )}
+        </span>
+        {!empty ? (
+          <span className="dayrow-hours">
+            <HoursSummary totalMinutes={total} extraMinutes={extra} extraLabel={extraLabel} />
+          </span>
+        ) : null}
+      </button>
+
+      {clipped ? (
+        <button
+          type="button"
+          className="dayrow-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? lessLabel : moreLabel}
+        </button>
       ) : null}
-    </button>
+    </div>
   )
 }

@@ -322,6 +322,47 @@ withTemplate('a configured install', () => {
     expect(entry!.colleagues.map((p) => p.name)).toEqual(['Ana Lopez'])
   })
 
+  const LONG =
+    'Sostituzione completa degli inverter nella cabina PB09, controllo delle protezioni e ' +
+    'verifica del cablaggio di tutte le stringhe collegate'
+
+  it('offers to open up a description too long for one line', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.type(await screen.findByPlaceholderText('Cosa hai fatto?'), LONG)
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    const more = await screen.findByRole('button', { name: 'Mostra tutto' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+
+    await user.click(more)
+    const less = await screen.findByRole('button', { name: 'Mostra meno' })
+    expect(less.getAttribute('aria-expanded')).toBe('true')
+    // Expanded, the row shows the whole text rather than a clipped copy.
+    expect(document.querySelector('.dayrow-sub.is-expanded')!.textContent).toBe(LONG)
+
+    await user.click(less)
+    expect(await screen.findByRole('button', { name: 'Mostra tutto' })).toBeTruthy()
+  })
+
+  it('leaves short descriptions alone', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.type(await screen.findByPlaceholderText('Cosa hai fatto?'), 'Pulizia moduli')
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    await user.click(screen.getByRole('button', { name: /Settimana/ }))
+    await screen.findByText('Totale settimana')
+    expect(screen.queryByRole('button', { name: 'Mostra tutto' })).toBeNull()
+  })
+
   it('shows the week view with the days that are still missing', async () => {
     const user = userEvent.setup()
     render(<App />)
