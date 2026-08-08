@@ -12,16 +12,12 @@ import 'fake-indexeddb/auto'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { unzipSync, strFromU8 } from 'fflate'
+import { lazy, templateBytes, withTemplate } from './testing/template'
 import App from './App'
 import { db, loadSettings, savePack, saveSettings, defaultSettings } from './db'
 import { bytesToBase64 } from './lib/base64'
 import type { CompanyPack } from './types'
-
-const TEMPLATE_PATH =
-  process.env.TEMPLATE_PATH ?? resolve(process.cwd(), 'Template_Type.xlsx')
 
 function testPack(templateBase64: string): CompanyPack {
   return {
@@ -108,14 +104,12 @@ describe('a blank install', () => {
   })
 })
 
-const hasTemplate = existsSync(TEMPLATE_PATH)
-const withTemplate = hasTemplate ? describe : describe.skip
+// Deferred: a skipped suite still runs its body, and the template is absent in CI.
+const templateBase64 = lazy(() => bytesToBase64(templateBytes()))
 
 withTemplate('a configured install', () => {
-  const templateBase64 = bytesToBase64(new Uint8Array(readFileSync(TEMPLATE_PATH)))
-
   beforeEach(async () => {
-    await savePack(testPack(templateBase64))
+    await savePack(testPack(templateBase64()))
     await saveSettings({
       ...defaultSettings(),
       technician: { name: 'Mario Rossi', email: 'mario@example.test' },
@@ -270,10 +264,8 @@ withTemplate('a configured install', () => {
 })
 
 withTemplate('the whole path from typing to spreadsheet', () => {
-  const templateBase64 = bytesToBase64(new Uint8Array(readFileSync(TEMPLATE_PATH)))
-
   it('puts what the technician typed into the right cells', async () => {
-    await savePack(testPack(templateBase64))
+    await savePack(testPack(templateBase64()))
     await saveSettings({
       ...defaultSettings(),
       technician: { name: 'Mario Rossi', email: 'mario@example.test' },

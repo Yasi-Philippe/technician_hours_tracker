@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { unzipSync, strFromU8 } from 'fflate'
+import { lazy, templateBytes, withTemplate } from '../testing/template'
 import type { CompanyPack, Entry } from '../types'
 import { buildReport, crewOf, reportFileName, reportRows, summarise } from './report'
 import { bytesToBase64 } from './base64'
-
-const TEMPLATE_PATH =
-  process.env.TEMPLATE_PATH ?? resolve(process.cwd(), 'Template_Type.xlsx')
 
 const entry = (over: Partial<Entry> = {}): Entry => ({
   id: over.id ?? 'e1',
@@ -148,12 +144,9 @@ describe('file names', () => {
   })
 })
 
-const hasTemplate = existsSync(TEMPLATE_PATH)
-const withTemplate = hasTemplate ? describe : describe.skip
-
 withTemplate('building a report against a real template', () => {
-  const templateBase64 = bytesToBase64(new Uint8Array(readFileSync(TEMPLATE_PATH)))
-  const p = pack(templateBase64)
+  // Deferred: a skipped suite still runs its body, and the template is absent in CI.
+  const packed = lazy(() => pack(bytesToBase64(templateBytes())))
 
   it('writes one row carrying the whole crew, with the right values', () => {
     const report = buildReport(
@@ -166,7 +159,7 @@ withTemplate('building a report against a real template', () => {
           colleagues: [{ name: 'Ana Lopez', email: 'ana@example.test' }],
         }),
       ],
-      p,
+      packed(),
       { anchorDate: '2026-08-03', technicianName: 'Mario Rossi' },
     )
 
@@ -197,7 +190,7 @@ withTemplate('building a report against a real template', () => {
       [8 * 60 + 30, 11 * 60, '2.5', null],
       [5 * 60, 20 * 60, '8', '7'],
     ] as const) {
-      const report = buildReport([entry({ startMinutes: start, endMinutes: end })], p, {
+      const report = buildReport([entry({ startMinutes: start, endMinutes: end })], packed(), {
         anchorDate: '2026-08-03',
         technicianName: 'Mario Rossi',
       })
@@ -216,7 +209,7 @@ withTemplate('building a report against a real template', () => {
   })
 
   it('keeps the total equal to normal plus overtime', () => {
-    const report = buildReport([entry({ startMinutes: 5 * 60, endMinutes: 20 * 60 })], p, {
+    const report = buildReport([entry({ startMinutes: 5 * 60, endMinutes: 20 * 60 })], packed(), {
       anchorDate: '2026-08-03',
       technicianName: 'Mario Rossi',
     })
@@ -229,7 +222,7 @@ withTemplate('building a report against a real template', () => {
   })
 
   it('leaves the overtime cell empty on a normal day', () => {
-    const report = buildReport([entry()], p, {
+    const report = buildReport([entry()], packed(), {
       anchorDate: '2026-08-03',
       technicianName: 'Mario Rossi',
     })
@@ -238,7 +231,7 @@ withTemplate('building a report against a real template', () => {
   })
 
   it('writes the status as a fraction when the column is formatted as a percentage', () => {
-    const report = buildReport([entry({ statusPercent: 50 })], p, {
+    const report = buildReport([entry({ statusPercent: 50 })], packed(), {
       anchorDate: '2026-08-03',
       technicianName: 'Mario Rossi',
     })
