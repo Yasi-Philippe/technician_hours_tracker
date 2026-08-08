@@ -4,15 +4,15 @@
  * The summary is shown in plain language before anything is generated, because this is
  * the file that goes to the office and a wrong week is embarrassing to discover later.
  *
- * The colleague toggle only appears when there is more than one person in the week —
- * otherwise it is a control that can only ever have one sensible setting.
+ * One intervention is one row, however many people were on it, so the people who worked
+ * that week are listed rather than counted as rows.
  */
 
 import { useMemo, useState } from 'react'
 import type { CompanyPack, Entry, Settings } from '../types'
 import type { Strings } from '../i18n'
-import { Sheet, Switch, downloadBlob, type ToastState } from './ui'
-import { buildReport, expandRows, summarise } from '../lib/report'
+import { Sheet, downloadBlob, type ToastState } from './ui'
+import { buildReport, reportRows, summarise } from '../lib/report'
 import { formatDuration } from '../lib/time'
 import { formatShortDate, isoWeek, weekDates } from '../lib/dates'
 
@@ -33,19 +33,11 @@ export function ExportSheet({
   onToast: (toast: ToastState) => void
   onClose: () => void
 }) {
-  const [includeColleagues, setIncludeColleagues] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const days = weekDates(anchorDate)
-  const summary = useMemo(
-    () => summarise(expandRows(entries, includeColleagues), pack),
-    [entries, includeColleagues, pack],
-  )
-  const hasColleagues = useMemo(
-    () => entries.some((entry) => entry.colleagues.length > 0),
-    [entries],
-  )
+  const summary = useMemo(() => summarise(reportRows(entries), pack), [entries, pack])
 
   const run = () => {
     setBusy(true)
@@ -54,7 +46,6 @@ export function ExportSheet({
       const report = buildReport(entries, pack, {
         anchorDate,
         technicianName: settings.technician.name,
-        includeColleagues,
       })
       downloadBlob(
         new Blob([report.bytes as BlobPart], {
@@ -120,10 +111,6 @@ export function ExportSheet({
           <span className="row-label">{t.exportEntries}</span>
           <span className="row-value">{summary.entryCount}</span>
         </div>
-        <div className="row row-static">
-          <span className="row-label">{t.exportRows}</span>
-          <span className="row-value">{summary.rowCount}</span>
-        </div>
         {summary.technicians.length > 1 ? (
           <div className="row row-static">
             <span className="row-label">{t.exportTechnicians}</span>
@@ -131,16 +118,6 @@ export function ExportSheet({
           </div>
         ) : null}
       </div>
-
-      {hasColleagues ? (
-        <div className="rows" style={{ marginTop: 12 }}>
-          <Switch
-            label={t.includeColleagues}
-            checked={includeColleagues}
-            onChange={setIncludeColleagues}
-          />
-        </div>
-      ) : null}
 
       {entries.length === 0 ? <p className="hint">{t.exportEmpty}</p> : null}
       {error ? <p className="error">{error}</p> : null}

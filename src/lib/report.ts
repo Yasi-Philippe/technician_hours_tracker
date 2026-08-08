@@ -14,7 +14,6 @@ import { packTemplateBytes } from './pack'
 
 export interface ReportSummary {
   entryCount: number
-  rowCount: number
   dayCount: number
   technicians: string[]
   totalMinutes: number
@@ -27,10 +26,24 @@ export interface BuiltReport {
   summary: ReportSummary
 }
 
-/** One spreadsheet row: an entry as performed by one particular technician. */
-interface ReportRow {
-  entry: Entry
-  technician: Person
+/** Separates the names sharing one TECNICO cell. */
+export const TECHNICIAN_SEPARATOR = '; '
+
+/**
+ * Everyone who worked an intervention: the technician who filed it, then any colleagues,
+ * in the order they were added. Blank and duplicate names are dropped, so a slip while
+ * typing cannot produce "Mario Rossi; Mario Rossi".
+ */
+export function crewOf(entry: Entry): Person[] {
+  const crew: Person[] = []
+  const seen = new Set<string>()
+  for (const person of [entry.technician, ...entry.colleagues]) {
+    const name = person.name.trim()
+    if (name === '' || seen.has(name.toLowerCase())) continue
+    seen.add(name.toLowerCase())
+    crew.push({ name, email: person.email })
+  }
+  return crew
 }
 
 function durationCell(minutes: number, format: DurationFormat): Cell {
@@ -45,8 +58,8 @@ function durationCell(minutes: number, format: DurationFormat): Cell {
   }
 }
 
-function buildRow(row: ReportRow, pack: CompanyPack): Row {
-  const { entry, technician } = row
+function buildRow(entry: Entry, pack: CompanyPack): Row {
+  const crew = crewOf(entry)
   const { columns, percentScale, uppercaseMonth, emptySectionText } = pack.sheet
   const date = fromISODate(entry.date)
   const hours = computeHours(
@@ -72,8 +85,11 @@ function buildRow(row: ReportRow, pack: CompanyPack): Row {
   put('description', text(entry.description))
   put('impresa', text(pack.constants.impresa))
   put('cliente', text(pack.constants.cliente))
-  put('technicianName', text(technician.name))
-  put('technicianEmail', text(technician.email))
+  // Everyone who was there shares one row. A row per person would double the hours when
+  // the sheet is totalled, which is exactly what the office must not see.
+  put('technicianName', text(crew.map((person) => person.name).join(TECHNICIAN_SEPARATOR)))
+  // The e-mail column identifies who filed the report, so it stays the author's alone.
+  put('technicianEmail', text(entry.technician.email))
   put('startTime', durationCell(entry.startMinutes, pack.sheet.timeFormat))
   put('endTime', durationCell(entry.endMinutes, pack.sheet.timeFormat))
   // Total is every hour worked, normal plus overtime.
@@ -91,52 +107,37 @@ function buildRow(row: ReportRow, pack: CompanyPack): Row {
 }
 
 /**
- * Expand entries into spreadsheet rows.
+ * Order entries the way they will appear in the sheet: one row each, by date.
  *
- * A colleague who was present at an intervention gets their own row carrying the same
- * work and the same hours under their own name — which is how these reports have always
- * recorded two people on one job.
+ * One intervention is one row no matter how many people were on it. Giving each colleague
+ * their own row would repeat the same hours under different names, and any total taken
+ * down the ORE TOTALI column would come out at a multiple of the hours actually worked.
  */
-export function expandRows(entries: Entry[], includeColleagues = true): ReportRow[] {
-  const sorted = [...entries].sort(
-    (a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt,
-  )
-  const rows: ReportRow[] = []
-  for (const entry of sorted) {
-    rows.push({ entry, technician: entry.technician })
-    if (!includeColleagues) continue
-    for (const colleague of entry.colleagues) {
-      if (colleague.name.trim() === '') continue
-      rows.push({ entry, technician: colleague })
-    }
-  }
-  return rows
+export function reportRows(entries: Entry[]): Entry[] {
+  return [...entries].sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)
 }
 
-export function summarise(rows: ReportRow[], pack: CompanyPack): ReportSummary {
+export function summarise(entries: Entry[], pack: CompanyPack): ReportSummary {
   const days = new Set<string>()
   const technicians = new Set<string>()
-  const entries = new Set<string>()
   let totalMinutes = 0
   let extraMinutes = 0
 
-  for (const row of rows) {
-    days.add(row.entry.date)
-    technicians.add(row.technician.name)
+  for (const entry of entries) {
+    days.add(entry.date)
+    for (const person of crewOf(entry)) technicians.add(person.name)
     const hours = computeHours(
-      row.entry.startMinutes,
-      row.entry.endMinutes,
+      entry.startMinutes,
+      entry.endMinutes,
       pack.defaults.contractualDailyMinutes,
-      row.entry.extraMinutesOverride,
+      entry.extraMinutesOverride,
     )
     totalMinutes += hours.totalMinutes
     extraMinutes += hours.extraMinutes
-    entries.add(row.entry.id)
   }
 
   return {
-    entryCount: entries.size,
-    rowCount: rows.length,
+    entryCount: entries.length,
     dayCount: days.size,
     technicians: [...technicians].sort(),
     totalMinutes,
@@ -173,15 +174,15 @@ export function reportFileName(
 export function buildReport(
   entries: Entry[],
   pack: CompanyPack,
-  options: { anchorDate: string; technicianName: string; includeColleagues?: boolean },
+  options: { anchorDate: string; technicianName: string },
 ): BuiltReport {
-  const rows = expandRows(entries, options.includeColleagues ?? true)
+  const rows = reportRows(entries)
   const summary = summarise(rows, pack)
 
-  const dates = rows.map((r) => r.entry.date).sort()
+  const dates = rows.map((entry) => entry.date).sort()
   const bytes = fillTemplate(packTemplateBytes(pack), {
     dataStartRow: pack.sheet.dataStartRow,
-    rows: rows.map((row) => buildRow(row, pack)),
+    rows: rows.map((entry) => buildRow(entry, pack)),
   })
 
   return {

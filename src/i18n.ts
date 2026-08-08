@@ -108,12 +108,10 @@ const it = {
   exportButton: 'Crea il file Excel',
   exportSummary: 'Riepilogo',
   exportEntries: 'rapporti',
-  exportRows: 'righe nel file',
   exportDays: 'giorni',
   exportTechnicians: 'tecnici',
   exportEmpty: 'Non c’è niente da esportare per questa settimana',
   exportDone: 'File creato',
-  includeColleagues: 'Includi i colleghi',
   exportNeedsPack: 'Serve il file aziendale per creare il rapporto',
 
   // Backup
@@ -248,12 +246,10 @@ const es: Strings = {
   exportButton: 'Crear el archivo Excel',
   exportSummary: 'Resumen',
   exportEntries: 'partes',
-  exportRows: 'filas en el archivo',
   exportDays: 'días',
   exportTechnicians: 'técnicos',
   exportEmpty: 'No hay nada que exportar en esta semana',
   exportDone: 'Archivo creado',
-  includeColleagues: 'Incluir a los compañeros',
   exportNeedsPack: 'Hace falta el archivo de la empresa para crear el parte',
 
   backupTitle: 'Copia de seguridad',
