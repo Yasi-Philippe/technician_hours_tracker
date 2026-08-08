@@ -6,7 +6,7 @@
  * spreadsheet expects.
  */
 
-import type { CompanyPack, Entry, Person } from '../types'
+import type { CompanyPack, DurationFormat, Entry, Person } from '../types'
 import { blank, dateToSerial, fillTemplate, num, text, type Cell, type Row } from './xlsx'
 import { fromISODate, isoWeek, isoWeekYear, reportMonthName } from './dates'
 import { computeHours, formatClock, toDecimalHours, MINUTES_PER_DAY } from './time'
@@ -33,7 +33,7 @@ interface ReportRow {
   technician: Person
 }
 
-function durationCell(minutes: number, format: CompanyPack['sheet']['durationFormat']): Cell {
+function durationCell(minutes: number, format: DurationFormat): Cell {
   switch (format) {
     case 'decimal':
       return num(toDecimalHours(minutes))
@@ -76,11 +76,16 @@ function buildRow(row: ReportRow, pack: CompanyPack): Row {
   put('technicianEmail', text(technician.email))
   put('startTime', durationCell(entry.startMinutes, pack.sheet.timeFormat))
   put('endTime', durationCell(entry.endMinutes, pack.sheet.timeFormat))
-  put('totalHours', durationCell(hours.totalMinutes, pack.sheet.durationFormat))
-  put('normalHours', durationCell(hours.normalMinutes, pack.sheet.durationFormat))
+  // Total is every hour worked, normal plus overtime.
+  put('totalHours', durationCell(hours.totalMinutes, pack.sheet.totalFormat))
+  // Normal hours stop at the contractual day; anything past it lands in overtime.
+  put('normalHours', durationCell(hours.normalMinutes, pack.sheet.hoursFormat))
   // An empty overtime cell reads better than a column of zeroes, and matches how these
   // sheets are filled by hand.
-  put('extraHours', hours.extraMinutes > 0 ? durationCell(hours.extraMinutes, pack.sheet.durationFormat) : blank)
+  put(
+    'extraHours',
+    hours.extraMinutes > 0 ? durationCell(hours.extraMinutes, pack.sheet.hoursFormat) : blank,
+  )
 
   return cells
 }

@@ -8,6 +8,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { CompanyPack, Entry, Person, Settings } from './types'
 import { weekDates } from './lib/dates'
+import { parsePack } from './lib/pack'
 
 class AppDatabase extends Dexie {
   entries!: Table<Entry, string>
@@ -53,8 +54,24 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await db.settings.put({ ...settings, id: 'settings' })
 }
 
+/**
+ * Read the stored pack, re-validating it on the way out.
+ *
+ * Running it back through the parser means a pack imported by an older version of the app
+ * picks up new defaults automatically. Without this, a technician carrying a pack from
+ * before a settings change keeps producing reports with the old behaviour and has no way
+ * of knowing — the file would simply be quietly wrong.
+ */
 export async function loadPack(): Promise<CompanyPack | undefined> {
-  return db.packs.get('pack')
+  const stored = await db.packs.get('pack')
+  if (!stored) return undefined
+  try {
+    return { ...parsePack(stored), id: 'pack', installedAt: stored.installedAt }
+  } catch {
+    // An unreadable pack is still better than none: the app degrades rather than
+    // pretending the technician never installed one.
+    return stored
+  }
 }
 
 export async function savePack(pack: CompanyPack): Promise<void> {

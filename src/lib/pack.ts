@@ -82,11 +82,18 @@ function parseSheet(value: unknown): SheetMapping {
     throw new PackError('"sheet.columns" does not map a single column')
   }
 
+  // `durationFormat` was a single setting covering total, normal and overtime hours.
+  // It is still accepted so packs already handed out keep importing, but the two
+  // replacements are what the exporter reads.
+  const legacy = asOptionalString(raw.durationFormat, '') as DurationFormat | ''
   const timeFormat = asOptionalString(raw.timeFormat, 'fraction') as DurationFormat
-  const durationFormat = asOptionalString(raw.durationFormat, 'fraction') as DurationFormat
+  const totalFormat = asOptionalString(raw.totalFormat, legacy || 'fraction') as DurationFormat
+  const hoursFormat = asOptionalString(raw.hoursFormat, legacy || 'decimal') as DurationFormat
+
   for (const [name, format] of [
     ['timeFormat', timeFormat],
-    ['durationFormat', durationFormat],
+    ['totalFormat', totalFormat],
+    ['hoursFormat', hoursFormat],
   ] as const) {
     if (!DURATION_FORMATS.includes(format)) {
       throw new PackError(`"sheet.${name}" must be one of: ${DURATION_FORMATS.join(', ')}`)
@@ -99,7 +106,8 @@ function parseSheet(value: unknown): SheetMapping {
     dataStartRow,
     columns,
     timeFormat,
-    durationFormat,
+    totalFormat,
+    hoursFormat,
     percentScale,
     uppercaseMonth: raw.uppercaseMonth !== false,
     emptySectionText: asOptionalString(raw.emptySectionText, 'N/A'),

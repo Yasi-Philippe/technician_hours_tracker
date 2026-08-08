@@ -52,7 +52,8 @@ interface Draft {
   dataStartRow: number
   columns: Partial<Record<ColumnKey, number>>
   timeFormat: DurationFormat
-  durationFormat: DurationFormat
+  totalFormat: DurationFormat
+  hoursFormat: DurationFormat
   percentScale: 1 | 100
   uppercaseMonth: boolean
   emptySectionText: string
@@ -78,7 +79,8 @@ const EMPTY: Draft = {
   dataStartRow: 10,
   columns: {},
   timeFormat: 'fraction',
-  durationFormat: 'fraction',
+  totalFormat: 'fraction',
+  hoursFormat: 'decimal',
   percentScale: 1,
   uppercaseMonth: true,
   emptySectionText: 'N/A',
@@ -156,7 +158,8 @@ export default function PackBuilder() {
         dataStartRow: parsed.sheet.dataStartRow,
         columns: parsed.sheet.columns,
         timeFormat: parsed.sheet.timeFormat,
-        durationFormat: parsed.sheet.durationFormat,
+        totalFormat: parsed.sheet.totalFormat,
+        hoursFormat: parsed.sheet.hoursFormat,
         percentScale: parsed.sheet.percentScale,
         uppercaseMonth: parsed.sheet.uppercaseMonth,
         emptySectionText: parsed.sheet.emptySectionText,
@@ -192,7 +195,8 @@ export default function PackBuilder() {
       dataStartRow: draft.dataStartRow,
       columns: draft.columns,
       timeFormat: draft.timeFormat,
-      durationFormat: draft.durationFormat,
+      totalFormat: draft.totalFormat,
+      hoursFormat: draft.hoursFormat,
       percentScale: draft.percentScale,
       uppercaseMonth: draft.uppercaseMonth,
       emptySectionText: draft.emptySectionText.trim() || 'N/A',
@@ -362,10 +366,16 @@ export default function PackBuilder() {
               onChange={(value) => set('timeFormat', value)}
             />
           </Labelled>
-          <Labelled label="Durations">
+          <Labelled label="Total hours column">
             <FormatSelect
-              value={draft.durationFormat}
-              onChange={(value) => set('durationFormat', value)}
+              value={draft.totalFormat}
+              onChange={(value) => set('totalFormat', value)}
+            />
+          </Labelled>
+          <Labelled label="Normal and overtime hours columns">
+            <FormatSelect
+              value={draft.hoursFormat}
+              onChange={(value) => set('hoursFormat', value)}
             />
           </Labelled>
           <Labelled label="Status column">

@@ -117,10 +117,19 @@ export interface SheetMapping {
   dataStartRow: number
   /** Zero-based column index per field. Omit a key to leave that column alone. */
   columns: Partial<Record<ColumnKey, number>>
-  /** How clock times are written. */
+  /** How clock times are written — the start and end of the shift. */
   timeFormat: DurationFormat
-  /** How durations (total / normal / extra) are written. */
-  durationFormat: DurationFormat
+  /**
+   * How the total-hours column is written.
+   *
+   * Kept separate from `hoursFormat` because templates routinely format these columns
+   * differently: a total sitting in a `h:mm:ss` cell needs a day fraction, while the
+   * normal- and overtime-hours columns are usually plain `0.00` numbers. Writing a
+   * fraction into a decimal cell silently shows `0.33` where `8.00` was meant.
+   */
+  totalFormat: DurationFormat
+  /** How the normal-hours and overtime-hours columns are written. */
+  hoursFormat: DurationFormat
   /** `1` for a template whose cell is formatted as a percentage, `100` for a plain number. */
   percentScale: 1 | 100
   /** Uppercase the Italian month name, as most templates do. */

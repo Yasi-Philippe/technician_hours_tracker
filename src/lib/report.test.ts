@@ -55,7 +55,8 @@ const pack = (templateBase64: string): CompanyPack => ({
       extraHours: 16,
     },
     timeFormat: 'fraction',
-    durationFormat: 'fraction',
+      totalFormat: 'fraction',
+      hoursFormat: 'decimal',
     percentScale: 1,
     uppercaseMonth: true,
     emptySectionText: 'N/A',
@@ -166,10 +167,52 @@ withTemplate('building a report against a real template', () => {
     expect(sheet).toContain('Ana Lopez')
     // Section left blank falls back to the template's own "not applicable" text.
     expect(sheet).toContain('N/A')
-    // 10 worked hours: 8 normal, 2 extra, written as day fractions.
+    // 10 worked hours = 8 normal + 2 overtime.
+    // The total sits in a h:mm:ss cell, so it is a day fraction: 10/24.
     expect(sheet).toMatch(/<c r="O10"[^>]*><v>0\.41666/)
-    expect(sheet).toMatch(/<c r="P10"[^>]*><v>0\.33333/)
-    expect(sheet).toMatch(/<c r="Q10"[^>]*><v>0\.0833/)
+    // Normal and overtime sit in 0.00 cells, so they are decimal hours, not fractions.
+    expect(sheet).toMatch(/<c r="P10"[^>]*><v>8<\/v>/)
+    expect(sheet).toMatch(/<c r="Q10"[^>]*><v>2<\/v>/)
+  })
+
+  it('never writes a day fraction into the plain-number hours columns', () => {
+    // The regression this guards: one shared duration format wrote 8h as 0.333 into a
+    // cell formatted "0.00", so the report showed 0.33 hours instead of 8.
+    for (const [start, end, normal, extra] of [
+      [7 * 60, 15 * 60, '8', null],
+      [7 * 60, 17 * 60, '8', '2'],
+      [8 * 60 + 30, 11 * 60, '2.5', null],
+      [5 * 60, 20 * 60, '8', '7'],
+    ] as const) {
+      const report = buildReport([entry({ startMinutes: start, endMinutes: end })], p, {
+        anchorDate: '2026-08-03',
+        technicianName: 'Mario Rossi',
+      })
+      const sheet = strFromU8(unzipSync(report.bytes)['xl/worksheets/sheet1.xml']!)
+      expect(sheet, `${start}-${end} normal`).toMatch(
+        new RegExp(`<c r="P10"[^>]*><v>${normal}</v>`),
+      )
+      if (extra) {
+        expect(sheet, `${start}-${end} extra`).toMatch(
+          new RegExp(`<c r="Q10"[^>]*><v>${extra}</v>`),
+        )
+      } else {
+        expect(sheet, `${start}-${end} extra empty`).toMatch(/<c r="Q10"[^>]*\/>/)
+      }
+    }
+  })
+
+  it('keeps the total equal to normal plus overtime', () => {
+    const report = buildReport([entry({ startMinutes: 5 * 60, endMinutes: 20 * 60 })], p, {
+      anchorDate: '2026-08-03',
+      technicianName: 'Mario Rossi',
+    })
+    const sheet = strFromU8(unzipSync(report.bytes)['xl/worksheets/sheet1.xml']!)
+    const total = Number(/<c r="O10"[^>]*><v>([\d.]+)<\/v>/.exec(sheet)![1]) * 24
+    const normal = Number(/<c r="P10"[^>]*><v>([\d.]+)<\/v>/.exec(sheet)![1])
+    const extra = Number(/<c r="Q10"[^>]*><v>([\d.]+)<\/v>/.exec(sheet)![1])
+    expect(total).toBeCloseTo(15, 6)
+    expect(normal + extra).toBeCloseTo(total, 6)
   })
 
   it('leaves the overtime cell empty on a normal day', () => {
