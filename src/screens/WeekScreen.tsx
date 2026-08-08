@@ -10,7 +10,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import type { Entry } from '../types'
 import type { ScreenProps } from './shared'
-import { Empty } from '../components/ui'
+import { Empty, HoursSummary } from '../components/ui'
 import { ExportSheet } from '../components/ExportSheet'
 import { computeHours, formatDuration } from '../lib/time'
 import {
@@ -125,6 +125,7 @@ export default function WeekScreen({
               contractual={contractual}
               language={settings.language}
               missingLabel={t.missingDay}
+              extraLabel={t.extraShort}
               onOpen={() => onGoToDay(date)}
             />
           ))}
@@ -168,6 +169,7 @@ function DayRow({
   contractual,
   language,
   missingLabel,
+  extraLabel,
   onOpen,
 }: {
   date: string
@@ -175,6 +177,7 @@ function DayRow({
   contractual: number
   language: ScreenProps['settings']['language']
   missingLabel: string
+  extraLabel: string
   onOpen: () => void
 }) {
   let total = 0
@@ -225,8 +228,7 @@ function DayRow({
       </span>
       {!empty ? (
         <span className="dayrow-hours">
-          {formatDuration(total)}
-          {extra > 0 ? <span className="ot">+{formatDuration(extra)}</span> : null}
+          <HoursSummary totalMinutes={total} extraMinutes={extra} extraLabel={extraLabel} />
         </span>
       ) : null}
     </button>

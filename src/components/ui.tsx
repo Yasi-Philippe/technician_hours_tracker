@@ -14,7 +14,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { formatClock, parseClock, stepClock } from '../lib/time'
+import { formatClock, formatDuration, parseClock, stepClock } from '../lib/time'
 
 // ---------------------------------------------------------------- primitives
 
@@ -69,6 +69,35 @@ export function Empty({ title, hint }: { title: string; hint?: string }) {
 
 export function Credit({ text }: { text: string }) {
   return <p className="credit">{text}</p>
+}
+
+/**
+ * Hours worked, with the overtime named rather than appended.
+ *
+ * "9h +1h" reads as a sum — as though ten hours were worked — when the overtime is
+ * already inside the total. "9h (1h extra)" says the same thing without the arithmetic
+ * trap, which matters on a screen someone checks against their payslip.
+ */
+export function HoursSummary({
+  totalMinutes,
+  extraMinutes,
+  extraLabel,
+}: {
+  totalMinutes: number
+  extraMinutes: number
+  extraLabel: string
+}) {
+  return (
+    <>
+      {formatDuration(totalMinutes)}
+      {extraMinutes > 0 ? (
+        <span className="ot">
+          {' '}
+          ({formatDuration(extraMinutes)} {extraLabel})
+        </span>
+      ) : null}
+    </>
+  )
 }
 
 // -------------------------------------------------------------------- switch

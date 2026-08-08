@@ -167,6 +167,35 @@ withTemplate('a configured install', () => {
     expect(entry!.extraMinutesOverride).toBeNull()
   })
 
+  it('names overtime instead of appending it, so the total is not misread', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    const end = await screen.findByDisplayValue('15:00')
+    await user.clear(end)
+    await user.type(end, '16:00')
+    await user.tab()
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    // 9 hours worked, 1 of them overtime. "9h +1h" would read as ten.
+    const card = (await screen.findByText('07:00 – 16:00')).closest('.entry')!
+    const hours = card.querySelector('.entry-hours')!.textContent!.replace(/\s+/g, ' ').trim()
+    expect(hours).toBe('9h (1h extra)')
+    expect(hours).not.toContain('+')
+  })
+
+  it('shows no overtime note on a normal day', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Salva' }))
+
+    const card = (await screen.findByText('07:00 – 15:00')).closest('.entry')!
+    expect(card.querySelector('.entry-hours')!.textContent!.trim()).toBe('8h')
+  })
+
   it('never moves an option when it is selected', async () => {
     const user = userEvent.setup()
     render(<App />)

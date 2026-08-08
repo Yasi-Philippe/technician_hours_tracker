@@ -13,7 +13,7 @@ import type { Entry } from '../types'
 import type { ScreenProps } from './shared'
 import { WeekStrip } from '../components/WeekStrip'
 import { EntryForm, type EntryDraft } from '../components/EntryForm'
-import { Empty } from '../components/ui'
+import { Empty, HoursSummary } from '../components/ui'
 import { computeHours, formatClock, formatDuration } from '../lib/time'
 import { formatLongDate, todayISO, weekDates } from '../lib/dates'
 
@@ -209,6 +209,7 @@ export default function DayScreen({
                   key={entry.id}
                   entry={entry}
                   contractualMinutes={pack.defaults.contractualDailyMinutes}
+                  extraLabel={t.extraShort}
                   onOpen={() => setDraft(draftFromEntry(entry))}
                 />
               ))}
@@ -274,10 +275,12 @@ function Header({
 function EntryCard({
   entry,
   contractualMinutes,
+  extraLabel,
   onOpen,
 }: {
   entry: Entry
   contractualMinutes: number
+  extraLabel: string
   onOpen: () => void
 }) {
   const hours = computeHours(
@@ -297,10 +300,11 @@ function EntryCard({
           {formatClock(entry.startMinutes)} – {formatClock(entry.endMinutes)}
         </span>
         <span className="entry-hours">
-          {formatDuration(hours.totalMinutes)}
-          {hours.extraMinutes > 0 ? (
-            <span className="ot"> +{formatDuration(hours.extraMinutes)}</span>
-          ) : null}
+          <HoursSummary
+            totalMinutes={hours.totalMinutes}
+            extraMinutes={hours.extraMinutes}
+            extraLabel={extraLabel}
+          />
         </span>
       </div>
       <div className="entry-project">

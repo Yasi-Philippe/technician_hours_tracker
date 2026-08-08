@@ -977,11 +977,17 @@ textarea.input {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
+  white-space: nowrap;
 }
 
-.dayrow-hours .ot {
-  display: block;
-  font-size: 12px;
+/*
+ * Overtime is stated in parentheses, inline, because it is part of the total rather
+ * than something added to it. Lighter weight so the hours actually worked stay the
+ * first thing read.
+ */
+.dayrow-hours .ot,
+.entry-hours .ot {
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent);
 }
