@@ -582,6 +582,93 @@ withTemplate('a configured install', () => {
     await user.click(await screen.findByRole('button', { name: month }))
   }
 
+  it('leads with a hero figure and splits normal from overtime', async () => {
+    const user = userEvent.setup()
+    const today = new Date()
+    const iso = (day: number) =>
+      `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
+    await db.entries.bulkPut(
+      [
+        [iso(4), 420, 900], // 8h
+        [iso(5), 420, 1020], // 10h -> 2h overtime
+      ].map(([date, start, end], i) => ({
+        id: `s-${i}`,
+        date: date as string,
+        startMinutes: start as number,
+        endMinutes: end as number,
+        extraMinutesOverride: null,
+        project: 'PARCO NORD',
+        section: '',
+        interventionType: 'Correttivo',
+        statusPercent: 100,
+        description: 'Lavoro',
+        technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+        colleagues: [],
+        createdAt: 1,
+        updatedAt: 1,
+      })),
+    )
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Statistiche/ }))
+
+    // 18h total, of which 2h overtime — the headline, not a one-bar chart.
+    await waitFor(() => expect(document.querySelector('.hero-value')!.textContent).toBe('18h'))
+    expect(screen.getByText(/16h Ore normali/)).toBeTruthy()
+    expect(screen.getByText(/2h Ore extra/)).toBeTruthy()
+
+    // Supporting numbers as stat tiles.
+    expect(screen.getByText('Giorni lavorati')).toBeTruthy()
+    expect(screen.getByText('Giornata più lunga')).toBeTruthy()
+  })
+
+  it('switches between week, month and year', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Statistiche/ }))
+
+    // Month is the default period.
+    expect(screen.getByRole('button', { name: 'Mese' }).getAttribute('aria-pressed')).toBe('true')
+
+    await user.click(screen.getByRole('button', { name: 'Anno' }))
+    expect(screen.getByRole('button', { name: 'Anno' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Mese' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('offers the numbers behind the chart, for anyone who cannot read it', async () => {
+    const user = userEvent.setup()
+    const today = new Date()
+    await db.entries.put({
+      id: 'tbl',
+      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-04`,
+      startMinutes: 420,
+      endMinutes: 1020,
+      extraMinutesOverride: null,
+      project: 'PARCO NORD',
+      section: '',
+      interventionType: 'Correttivo',
+      statusPercent: 100,
+      description: 'Lavoro',
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      colleagues: [],
+      createdAt: 1,
+      updatedAt: 1,
+    })
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Statistiche/ }))
+
+    expect(document.querySelector('.data-table')).toBeNull()
+    await user.click(await screen.findByRole('button', { name: 'Mostra i numeri' }))
+
+    const table = document.querySelector('.data-table')!
+    expect(table).toBeTruthy()
+    // Every value the chart encodes, readable without colour or shape.
+    expect(table.textContent).toContain('10h')
+    expect(table.textContent).toContain('2h')
+  })
+
   it('shows a month of work and reaches a day from it', async () => {
     const user = userEvent.setup()
     const today = new Date()
