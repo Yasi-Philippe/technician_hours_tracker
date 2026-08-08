@@ -165,16 +165,45 @@ export function reportFileName(
   const filled = pattern
     .replace(/\{week\}/g, String(isoWeek(anchorDate)).padStart(2, '0'))
     .replace(/\{year\}/g, String(isoWeekYear(anchorDate)))
+    .replace(/\{month\}/g, reportMonthName(anchorDate, true))
     .replace(/\{name\}/g, technicianName)
     .replace(/\{from\}/g, from)
     .replace(/\{to\}/g, to)
   return `${safeFileName(filled) || 'Report'}.xlsx`
 }
 
+/** How much history a report covers. */
+export type ReportRange = 'week' | 'month' | 'all'
+
+/**
+ * The filename for a range.
+ *
+ * Only the weekly report follows the pack's pattern — that is the one the office receives
+ * every week and expects to recognise. A month or a full history is an occasional export,
+ * so it gets a name that says plainly what it is rather than a week number that would be
+ * misleading.
+ */
+export function fileNameForRange(
+  range: ReportRange,
+  pack: CompanyPack,
+  anchorDate: string,
+  technicianName: string,
+  from: string,
+  to: string,
+): string {
+  const pattern =
+    range === 'week'
+      ? pack.fileNamePattern
+      : range === 'month'
+        ? 'Report_{month}_{year}_{name}'
+        : 'Report_completo_{from}_{to}_{name}'
+  return reportFileName(pattern, anchorDate, technicianName, from, to)
+}
+
 export function buildReport(
   entries: Entry[],
   pack: CompanyPack,
-  options: { anchorDate: string; technicianName: string },
+  options: { anchorDate: string; technicianName: string; range?: ReportRange },
 ): BuiltReport {
   const rows = reportRows(entries)
   const summary = summarise(rows, pack)
@@ -187,8 +216,9 @@ export function buildReport(
 
   return {
     bytes,
-    filename: reportFileName(
-      pack.fileNamePattern,
+    filename: fileNameForRange(
+      options.range ?? 'week',
+      pack,
       options.anchorDate,
       options.technicianName,
       dates[0] ?? options.anchorDate,

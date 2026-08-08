@@ -126,7 +126,10 @@ const it = {
   noStatsYetHint: 'Registra qualche giornata e qui vedrai i tuoi totali.',
 
   // Export
-  exportTitle: 'Esporta la settimana',
+  exportTitle: 'Crea il rapporto',
+  exportRange: 'Cosa vuoi esportare',
+  rangeAll: 'Tutto',
+  exportAllRange: 'Tutta la cronologia',
   exportButton: 'Crea il file Excel',
   exportSummary: 'Riepilogo',
   exportEntries: 'rapporti',
@@ -296,7 +299,10 @@ const es: Strings = {
   noStatsYet: 'Todavía no hay datos que mostrar',
   noStatsYetHint: 'Registra algunos días y aquí verás tus totales.',
 
-  exportTitle: 'Exportar la semana',
+  exportTitle: 'Crear el parte',
+  exportRange: 'Qué quieres exportar',
+  rangeAll: 'Todo',
+  exportAllRange: 'Todo el historial',
   exportButton: 'Crear el archivo Excel',
   exportSummary: 'Resumen',
   exportEntries: 'partes',

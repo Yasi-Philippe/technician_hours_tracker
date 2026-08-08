@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { unzipSync, strFromU8 } from 'fflate'
 import { lazy, templateBytes, withTemplate } from '../testing/template'
 import type { CompanyPack, Entry } from '../types'
-import { buildReport, crewOf, reportFileName, reportRows, summarise } from './report'
+import { buildReport, crewOf, fileNameForRange, reportFileName, reportRows, summarise } from './report'
 import { bytesToBase64 } from './base64'
 
 const entry = (over: Partial<Entry> = {}): Entry => ({
@@ -127,6 +127,28 @@ describe('summary', () => {
     // 8h + 10h, not 8h + 8h + 10h.
     expect(s.totalMinutes).toBe(18 * 60)
     expect(s.extraMinutes).toBe(120)
+  })
+})
+
+describe('range file names', () => {
+  const p = pack('')
+
+  it('uses the company pattern for the weekly report', () => {
+    expect(fileNameForRange('week', p, '2026-08-03', 'Mario Rossi', '2026-08-03', '2026-08-07')).toBe(
+      'Report_S32_2026_Mario_Rossi.xlsx',
+    )
+  })
+
+  it('names a month by its month, not a misleading week number', () => {
+    const name = fileNameForRange('month', p, '2026-08-03', 'Mario Rossi', '2026-08-01', '2026-08-31')
+    expect(name).toBe('Report_AGOSTO_2026_Mario_Rossi.xlsx')
+    expect(name).not.toContain('S32')
+  })
+
+  it('names a full history by the period it covers', () => {
+    expect(fileNameForRange('all', p, '2026-08-03', 'Mario Rossi', '2025-03-11', '2026-08-07')).toBe(
+      'Report_completo_2025-03-11_2026-08-07_Mario_Rossi.xlsx',
+    )
   })
 })
 

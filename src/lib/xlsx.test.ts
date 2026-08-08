@@ -220,6 +220,32 @@ withTemplate('filling a real template', () => {
     }
   })
 
+  it('handles a full history far longer than the template', () => {
+    // Roughly two years of daily entries — what "export everything" produces after a
+    // while, and well past the 75 rows the template itself styles.
+    const many: Row[] = Array.from({ length: 500 }, (_, i) => [
+      num(dateToSerial(2026, 8, 3)),
+      text('AGOSTO'),
+      num(32),
+      text('PROGETTO'),
+      text('N/A'),
+      text('Correttivo'),
+      num(1),
+      text(`Voce numero ${i + 1}`),
+    ])
+    const bytes = fillTemplate(fixture().original, { dataStartRow: DATA_START, rows: many })
+    const big = strFromU8(unzipSync(bytes)['xl/worksheets/sheet1.xml']!)
+
+    expect(big).toContain('Voce numero 1')
+    expect(big).toContain('Voce numero 500')
+    // Last row lands where it should, and the sheet declares the right extent.
+    expect(big).toContain(`<c r="A${DATA_START + 499}"`)
+    expect(big).toMatch(new RegExp(`<dimension ref="A1:[A-Z]+${DATA_START + 499}"/>`))
+    // Still a valid archive with the logos untouched.
+    const parts = unzipSync(bytes)
+    expect(Object.keys(parts).filter((n) => n.startsWith('xl/media/')).length).toBeGreaterThan(0)
+  })
+
   it('grows beyond the template styled rows when a week is unusually busy', () => {
     const many: Row[] = Array.from({ length: 90 }, (_, i) => [
       num(dateToSerial(2026, 8, 3)),

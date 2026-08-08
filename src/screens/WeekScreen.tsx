@@ -266,7 +266,6 @@ export default function WeekScreen({
           <button
             type="button"
             className="btn btn-primary btn-lg"
-            disabled={entries.length === 0}
             onClick={() => (pack ? setExporting(true) : setNeedsPack(true))}
           >
             {t.exportButton}
@@ -295,7 +294,6 @@ export default function WeekScreen({
           pack={pack}
           settings={settings}
           t={t}
-          entries={entries}
           anchorDate={selectedDate}
           onToast={onToast}
           onClose={() => setExporting(false)}
