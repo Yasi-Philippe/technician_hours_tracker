@@ -39,8 +39,13 @@ export function optionsWith(options: string[], current: string): string[] {
   return out
 }
 
-/** Descriptions the technician has actually written, most recent first. */
-export function recentDescriptions(entries: Entry[], limit = 6): string[] {
+/**
+ * Descriptions the technician has actually written, most recent first, deduplicated.
+ *
+ * Capped deliberately. These are shown in full rather than truncated, so an uncapped
+ * list would turn into a wall of text and reading it would cost more than retyping.
+ */
+export function recentDescriptions(entries: Entry[], limit = 8): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const entry of [...entries].sort((a, b) => b.updatedAt - a.updatedAt)) {

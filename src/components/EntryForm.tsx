@@ -173,28 +173,12 @@ export function EntryForm({
         </div>
       </Field>
 
-      <Field label={t.description}>
-        <textarea
-          className="input"
-          value={draft.description}
-          placeholder={t.descriptionPlaceholder}
-          onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-        />
-        {suggestions.length > 0 ? (
-          <div className="chips" style={{ marginTop: 10 }}>
-            {suggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                className="chip"
-                onClick={() => setDraft({ ...draft, description: suggestion })}
-              >
-                {truncate(suggestion, 34)}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </Field>
+      <DescriptionField
+        draft={draft}
+        setDraft={setDraft}
+        t={t}
+        suggestions={suggestions}
+      />
 
       <ColleaguePicker
         t={t}
@@ -203,6 +187,81 @@ export function EntryForm({
         onChange={(colleagues) => setDraft({ ...draft, colleagues })}
       />
     </Sheet>
+  )
+}
+
+/**
+ * The description, plus a way to reuse an earlier one.
+ *
+ * Past descriptions used to sit under the field as chips, permanently visible and cut
+ * off mid-sentence. With months of history that is clutter on the screen someone opens
+ * every day, and a truncated chip is impossible to tell apart from a similar one.
+ *
+ * They are now behind a deliberate tap and shown in full, so the list is only there when
+ * it is wanted and is actually readable when it is.
+ */
+function DescriptionField({
+  draft,
+  setDraft,
+  t,
+  suggestions,
+}: {
+  draft: EntryDraft
+  setDraft: (next: EntryDraft) => void
+  t: Strings
+  suggestions: string[]
+}) {
+  const [picking, setPicking] = useState(false)
+
+  return (
+    <Field label={t.description}>
+      <textarea
+        className="input"
+        value={draft.description}
+        placeholder={t.descriptionPlaceholder}
+        onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+      />
+
+      {suggestions.length === 0 ? null : picking ? (
+        <div className="reuse">
+          <span className="field-label" style={{ marginTop: 14 }}>
+            {t.reuseDescriptionTitle}
+          </span>
+          <div className="reuse-list">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                className="reuse-item"
+                onClick={() => {
+                  setDraft({ ...draft, description: suggestion })
+                  setPicking(false)
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ marginTop: 10 }}
+            onClick={() => setPicking(false)}
+          >
+            {t.close}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn"
+          style={{ marginTop: 10 }}
+          onClick={() => setPicking(true)}
+        >
+          {t.reuseDescription}
+        </button>
+      )}
+    </Field>
   )
 }
 
@@ -401,8 +460,4 @@ function dedupePeople(people: Person[]): Person[] {
     out.push({ name: key, email: person.email })
   }
   return out
-}
-
-function truncate(value: string, max: number): string {
-  return value.length <= max ? value : `${value.slice(0, max - 1)}…`
 }

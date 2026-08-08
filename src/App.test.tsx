@@ -322,6 +322,71 @@ withTemplate('a configured install', () => {
     expect(entry!.colleagues.map((p) => p.name)).toEqual(['Ana Lopez'])
   })
 
+  it('keeps past descriptions out of the way until they are asked for', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // Nothing written yet, so there is nothing to reuse and no button at all.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    expect(screen.queryByRole('button', { name: 'Usa una descrizione già scritta' })).toBeNull()
+
+    await user.type(
+      await screen.findByPlaceholderText('Cosa hai fatto?'),
+      'Sostituzione inverter in cabina PB09',
+    )
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    // Now there is history — but it stays behind a tap rather than sitting on screen.
+    // (The text is on the saved entry card too, so check the picker list specifically.)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    expect(document.querySelectorAll('.reuse-item')).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: 'Usa una descrizione già scritta' }))
+    // Shown in full, not truncated, so two similar entries can be told apart.
+    const option = await screen.findByRole('button', {
+      name: 'Sostituzione inverter in cabina PB09',
+    })
+    await user.click(option)
+
+    expect(
+      (screen.getByPlaceholderText('Cosa hai fatto?') as HTMLTextAreaElement).value,
+    ).toBe('Sostituzione inverter in cabina PB09')
+    // Picking one closes the list again.
+    expect(screen.getByRole('button', { name: 'Usa una descrizione già scritta' })).toBeTruthy()
+  })
+
+  it('offers each past description once, most recent first', async () => {
+    const user = userEvent.setup()
+    const now = Date.now()
+    // Two entries share a description; a third is older.
+    await db.entries.bulkPut(
+      ['Ripetuta', 'Ripetuta', 'Più vecchia'].map((description, i) => ({
+        id: `seed-${i}`,
+        date: '2026-08-03',
+        startMinutes: 420,
+        endMinutes: 900,
+        extraMinutesOverride: null,
+        project: 'PARCO NORD',
+        section: '',
+        interventionType: 'Correttivo',
+        statusPercent: 100,
+        description,
+        technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+        colleagues: [],
+        createdAt: now - i * 1000,
+        updatedAt: now - i * 1000,
+      })),
+    )
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Usa una descrizione già scritta' }))
+
+    const listed = Array.from(document.querySelectorAll('.reuse-item')).map((el) => el.textContent)
+    expect(listed).toEqual(['Ripetuta', 'Più vecchia'])
+  })
+
   const LONG =
     'Sostituzione completa degli inverter nella cabina PB09, controllo delle protezioni e ' +
     'verifica del cablaggio di tutte le stringhe collegate'

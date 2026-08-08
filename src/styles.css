@@ -1324,3 +1324,40 @@ textarea.input {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------------------------------- reuse description */
+
+/*
+ * Past descriptions, shown in full rather than truncated. Each one is a target big
+ * enough to hit without care, and long text wraps instead of being cut — telling two
+ * similar entries apart is the whole point of the list.
+ */
+.reuse-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.reuse-item {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--paper);
+  text-align: left;
+  padding: 14px var(--pad);
+  min-height: var(--tap);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+
+.reuse-item + .reuse-item {
+  border-top: 1px solid var(--line);
+}
+
+.reuse-item:active {
+  background: var(--paper-sunk);
+}
