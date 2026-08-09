@@ -304,11 +304,14 @@ let openSheets = 0
  */
 export function Sheet({
   title,
+  subtitle,
   onClose,
   children,
   footer,
 }: {
   title: string
+  /** Context that must stay visible while the body scrolls — typically which day. */
+  subtitle?: string
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
@@ -336,7 +339,10 @@ export function Sheet({
       <div className="sheet-scrim" onClick={onClose} />
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
         <div className="sheet-head">
-          <h2 className="sheet-title">{title}</h2>
+          <div>
+            <h2 className="sheet-title">{title}</h2>
+            {subtitle ? <p className="sheet-subtitle">{subtitle}</p> : null}
+          </div>
           <button type="button" className="sheet-close" onClick={onClose} aria-label="×">
             ✕
           </button>

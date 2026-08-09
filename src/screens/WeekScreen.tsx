@@ -15,6 +15,7 @@ import { ExportSheet } from '../components/ExportSheet'
 import { PackRequired } from '../components/PackRequired'
 import { MonthGrid, type DayTotals } from '../components/MonthGrid'
 import { DayEntries } from '../components/DayEntries'
+import { WeekStrip } from '../components/WeekStrip'
 import { HolidayNotice } from './DayScreen'
 import { MonthPicker } from '../components/MonthPicker'
 import { computeHours, formatDuration } from '../lib/time'
@@ -73,6 +74,18 @@ export default function WeekScreen({
           ? db.entries.where('date').between(monthFrom, monthTo, true, true).toArray()
           : [],
       [mode, monthFrom, monthTo],
+    ) ?? []
+
+  // The week around whichever day is open, so the strip inside the sheet can show which
+  // of those days already have work on them.
+  const openWeek = openDay ? weekDates(openDay) : null
+  const openWeekEntries =
+    useLiveQuery(
+      async (): Promise<Entry[]> =>
+        openWeek
+          ? db.entries.where('date').between(openWeek[0]!, openWeek[6]!, true, true).toArray()
+          : [],
+      [openWeek?.[0], openWeek?.[6]],
     ) ?? []
 
   const earliest =
@@ -293,7 +306,8 @@ export default function WeekScreen({
           out what a tapped day contains, which is no answer at all. */}
       {openDay ? (
         <Sheet
-          title={formatLongDate(openDay, settings.language)}
+          title={t.day}
+          subtitle={formatLongDate(openDay, settings.language)}
           onClose={() => setOpenDay(null)}
           footer={
             <button type="button" className="btn btn-lg" onClick={() => setOpenDay(null)}>
@@ -301,6 +315,19 @@ export default function WeekScreen({
             </button>
           }
         >
+          {/* The same navigator as the day screen. Moving to the next day should not
+              cost a close, a hunt on the grid and a re-open. */}
+          <WeekStrip
+            anchor={openDay}
+            selected={openDay}
+            filledDates={new Set(openWeekEntries.map((entry) => entry.date))}
+            language={settings.language}
+            className="in-sheet"
+            onSelect={(date) => {
+              onSelectDate(date)
+              setOpenDay(date)
+            }}
+          />
           <HolidayNotice date={openDay} t={t} />
           <DayEntries
             date={openDay}

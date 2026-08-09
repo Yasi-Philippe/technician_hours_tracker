@@ -1866,3 +1866,22 @@ textarea.input {
 .entry-range + .entry-range {
   margin-top: 2px;
 }
+
+.sheet-subtitle {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: capitalize;
+}
+
+/*
+ * The week strip inside a sheet. Same navigator as the day screen, so a day opened from
+ * the calendar can be swapped for its neighbour without closing anything — the reason
+ * the day screen feels quick is that the days are always one tap away.
+ */
+.weekstrip.in-sheet {
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 16px;
+}

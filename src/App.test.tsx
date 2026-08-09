@@ -990,7 +990,7 @@ withTemplate('a configured install', () => {
     // The day opens over the calendar, headed by its date — no scrolling to find it.
     const sheet = document.querySelector('.sheet')!
     expect(sheet).toBeTruthy()
-    expect(sheet.querySelector('.sheet-title')!.textContent).toMatch(/\d/)
+    expect(sheet.querySelector('.sheet-subtitle')!.textContent).toMatch(/\d/)
     // The calendar is still there underneath.
     expect(document.querySelectorAll('.dayrow').length).toBe(7)
 
@@ -1007,6 +1007,44 @@ withTemplate('a configured install', () => {
     await user.click(screen.getByRole('button', { name: 'Chiudi il giorno' }))
     expect(document.querySelector('.sheet')).toBeNull()
     expect(document.querySelectorAll('.dayrow').length).toBe(7)
+  })
+
+  it('says which day the entry form is filling in', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    const head = document.querySelector('.sheet-head')!
+    // The form is never anonymous: the day is in the header, above the scrolling body.
+    expect(head.querySelector('.sheet-subtitle')).toBeTruthy()
+    expect(head.querySelector('.sheet-subtitle')!.textContent!.length).toBeGreaterThan(6)
+  })
+
+  it('switches between days inside the calendar sheet without closing it', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+
+    // Open Monday from the week list.
+    await user.click(document.querySelectorAll('.dayrow-open')[0] as HTMLElement)
+    const sheet = () => document.querySelector('.sheet')!
+    const shownDate = () => sheet().querySelector('.sheet-subtitle')!.textContent
+
+    const monday = shownDate()
+    // The strip inside the sheet offers the whole week.
+    const strip = sheet().querySelector('.weekstrip.in-sheet')!
+    expect(strip).toBeTruthy()
+    expect(strip.querySelectorAll('.daychip')).toHaveLength(7)
+
+    // Tapping Wednesday swaps the day in place — the sheet never closes.
+    await user.click(strip.querySelectorAll('.daychip')[2] as HTMLElement)
+    await waitFor(() => expect(shownDate()).not.toBe(monday))
+    expect(document.querySelectorAll('.sheet')).toHaveLength(1)
+
+    // And the day being edited is the one now selected in the strip.
+    const selected = sheet().querySelector('.daychip.is-selected')!
+    expect(selected).toBeTruthy()
+    expect(shownDate()).toContain(selected.querySelector('.daychip-number')!.textContent)
   })
 
   it('jumps to any month of any year in two taps', async () => {

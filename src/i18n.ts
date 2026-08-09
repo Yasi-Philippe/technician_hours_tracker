@@ -49,6 +49,7 @@ const it = {
   nameRequired: 'Scrivi il tuo nome per continuare',
 
   // Day entry
+  day: 'Giorno',
   today: 'Oggi',
   addEntry: 'Aggiungi',
   newEntry: 'Nuovo rapporto',
@@ -245,6 +246,7 @@ const es: Strings = {
   companyFileLoaded: 'Archivo de la empresa cargado',
   nameRequired: 'Escribe tu nombre para continuar',
 
+  day: 'Día',
   today: 'Hoy',
   addEntry: 'Añadir',
   newEntry: 'Nuevo parte',

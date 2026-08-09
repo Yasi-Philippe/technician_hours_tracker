@@ -15,6 +15,7 @@ import type { Strings } from '../i18n'
 import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
 import { Field, OptionGrid, Sheet, TimeBox } from './ui'
 import { entrySetup, optionsWith, recentDescriptions } from '../screens/shared'
+import { formatLongDate } from '../lib/dates'
 
 const STATUS_CHOICES = [100, 75, 50, 25]
 
@@ -73,6 +74,10 @@ export function EntryForm({
   return (
     <Sheet
       title={draft.id ? t.editEntry : t.newEntry}
+      // Which day this is for. Without it the form is anonymous: open it from a
+      // calendar, scroll a little, and there is no way to tell what you are filling in
+      // short of closing it and starting again.
+      subtitle={formatLongDate(draft.date, settings.language)}
       onClose={onClose}
       footer={
         <div className="stack">

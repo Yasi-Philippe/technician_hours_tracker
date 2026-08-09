@@ -14,17 +14,20 @@ export function WeekStrip({
   selected,
   filledDates,
   language,
+  className = '',
   onSelect,
 }: {
   anchor: string
   selected: string
   filledDates: Set<string>
   language: Language
+  /** Extra class, so the strip can sit inside a sheet as well as under the top bar. */
+  className?: string
   onSelect: (date: string) => void
 }) {
   const today = todayISO()
   return (
-    <div className="weekstrip">
+    <div className={`weekstrip${className ? ` ${className}` : ''}`}>
       {weekDates(anchor).map((date) => {
         const classes = [
           'daychip',
