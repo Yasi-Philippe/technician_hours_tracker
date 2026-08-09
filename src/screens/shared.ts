@@ -77,7 +77,7 @@ const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
  *
  * Anything the pack already offers is ignored: the company's own lists are not
  * duplicated into the technician's. Case and stray spaces are treated as the same value,
- * so "latera" typed twice does not become two entries.
+ * so the same word typed twice with different capitals does not become two entries.
  */
 export function rememberValue(existing: string[], value: string, fromPack: string[]): string[] {
   const trimmed = value.trim()

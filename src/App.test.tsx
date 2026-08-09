@@ -309,7 +309,7 @@ withTemplate('a configured install', () => {
     expect(gridOf('A1')).toContain('cols-4')
     // "Conservazione parco" needs the full width to stay readable.
     expect(gridOf('Conservazione parco')).toContain('cols-1')
-    // "LATERA/PIANSANO" length projects also stay full width.
+    // Medium-length labels get two across.
     expect(gridOf('PARCO NORD')).toContain('cols-2')
   })
 
@@ -535,19 +535,19 @@ withTemplate('a configured install', () => {
 
     // Add a colleague by hand, with a typo.
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
-    await user.type(await screen.findByPlaceholderText('Aggiungi collega'), 'Crlos Gallego')
+    await user.type(await screen.findByPlaceholderText('Aggiungi collega'), 'Luigi Verd')
     await user.click(screen.getByRole('button', { name: '+' }))
     await user.click(screen.getByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
-    expect((await loadSettings()).customColleagues.map((p) => p.name)).toEqual(['Crlos Gallego'])
+    expect((await loadSettings()).customColleagues.map((p) => p.name)).toEqual(['Luigi Verd'])
 
     await user.click(screen.getByRole('button', { name: /Impostazioni/ }))
-    await user.click(await screen.findByRole('button', { name: 'Togli Crlos Gallego' }))
+    await user.click(await screen.findByRole('button', { name: 'Togli Luigi Verd' }))
 
     await waitFor(async () => expect((await loadSettings()).customColleagues).toEqual([]))
     // The report that already used the name keeps it: correcting a list is not a rewrite.
     const [entry] = await db.entries.toArray()
-    expect(entry!.colleagues.map((p) => p.name)).toEqual(['Crlos Gallego'])
+    expect(entry!.colleagues.map((p) => p.name)).toEqual(['Luigi Verd'])
   })
 
   it('treats the same name typed differently as one remembered entry', async () => {
