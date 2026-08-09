@@ -10,7 +10,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import type { Entry } from '../types'
 import type { ScreenProps } from './shared'
-import { Empty, HoursSummary } from '../components/ui'
+import { Empty, HoursSummary, Sheet } from '../components/ui'
 import { ExportSheet } from '../components/ExportSheet'
 import { PackRequired } from '../components/PackRequired'
 import { MonthGrid, type DayTotals } from '../components/MonthGrid'
@@ -289,27 +289,29 @@ export default function WeekScreen({
         )}
       </div>
 
+      {/* Over the calendar, not under it: a panel below the fold means scrolling to find
+          out what a tapped day contains, which is no answer at all. */}
       {openDay ? (
-        <div className="screen-pad" style={{ paddingTop: 0 }}>
-          <div className="daypanel">
-            <div className="daypanel-head">
-              <p className="daypanel-date">{formatLongDate(openDay, settings.language)}</p>
-              <button type="button" className="daypanel-close" onClick={() => setOpenDay(null)}>
-                {t.closeDay}
-              </button>
-            </div>
-            <HolidayNotice date={openDay} t={t} />
-            <DayEntries
-              date={openDay}
-              settings={settings}
-              pack={pack}
-              t={t}
-              onUpdateSettings={onUpdateSettings}
-              onToast={onToast}
-              compact
-            />
-          </div>
-        </div>
+        <Sheet
+          title={formatLongDate(openDay, settings.language)}
+          onClose={() => setOpenDay(null)}
+          footer={
+            <button type="button" className="btn btn-lg" onClick={() => setOpenDay(null)}>
+              {t.closeDay}
+            </button>
+          }
+        >
+          <HolidayNotice date={openDay} t={t} />
+          <DayEntries
+            date={openDay}
+            settings={settings}
+            pack={pack}
+            t={t}
+            onUpdateSettings={onUpdateSettings}
+            onToast={onToast}
+            compact
+          />
+        </Sheet>
       ) : null}
 
       {jumping ? (

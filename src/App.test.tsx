@@ -987,19 +987,26 @@ withTemplate('a configured install', () => {
     const rows = document.querySelectorAll('.dayrow-open')
     await user.click(rows[0] as HTMLElement)
 
-    // The day opens below, headed by its date, with the week list still above it.
-    expect(document.querySelector('.daypanel')).toBeTruthy()
+    // The day opens over the calendar, headed by its date — no scrolling to find it.
+    const sheet = document.querySelector('.sheet')!
+    expect(sheet).toBeTruthy()
+    expect(sheet.querySelector('.sheet-title')!.textContent).toMatch(/\d/)
+    // The calendar is still there underneath.
     expect(document.querySelectorAll('.dayrow').length).toBe(7)
 
     // And it is fully editable from here.
+    // The entry form stacks over the day sheet, and closes back to it rather than
+    // dismissing everything at once.
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    expect(document.querySelectorAll('.sheet')).toHaveLength(2)
     await user.click(await screen.findByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
-    expect(document.querySelector('.month-grid, .dayrow')).toBeTruthy()
+    await waitFor(() => expect(document.querySelectorAll('.sheet')).toHaveLength(1))
 
     // Closing puts it away without navigating anywhere.
     await user.click(screen.getByRole('button', { name: 'Chiudi il giorno' }))
-    expect(document.querySelector('.daypanel')).toBeNull()
+    expect(document.querySelector('.sheet')).toBeNull()
+    expect(document.querySelectorAll('.dayrow').length).toBe(7)
   })
 
   it('jumps to any month of any year in two taps', async () => {

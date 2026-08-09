@@ -290,6 +290,15 @@ export function TimeBox({
 // -------------------------------------------------------------------- sheet
 
 /**
+ * How many sheets are currently open.
+ *
+ * Sheets stack — a day opens over the calendar, and its entry form opens over that.
+ * Without knowing the depth, one Escape would close every open sheet at once instead of
+ * stepping back one level.
+ */
+let openSheets = 0
+
+/**
  * A bottom sheet. Closing is always available and never asks for confirmation —
  * destructive steps are undoable instead.
  */
@@ -307,13 +316,16 @@ export function Sheet({
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const depth = ++openSheets
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // Only the sheet on top responds, so Escape steps back one level.
+      if (e.key === 'Escape' && depth === openSheets) onClose()
     }
     document.addEventListener('keydown', onKey)
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
+      openSheets--
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = previous
     }
