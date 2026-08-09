@@ -14,7 +14,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { formatClock, parseClock, stepClock } from '../lib/time'
+import { formatClock, formatDuration, parseClock, stepClock } from '../lib/time'
 
 // ---------------------------------------------------------------- primitives
 
@@ -71,6 +71,35 @@ export function Credit({ text }: { text: string }) {
   return <p className="credit">{text}</p>
 }
 
+/**
+ * Hours worked, with the overtime named rather than appended.
+ *
+ * "9h +1h" reads as a sum — as though ten hours were worked — when the overtime is
+ * already inside the total. "9h (1h extra)" says the same thing without the arithmetic
+ * trap, which matters on a screen someone checks against their payslip.
+ */
+export function HoursSummary({
+  totalMinutes,
+  extraMinutes,
+  extraLabel,
+}: {
+  totalMinutes: number
+  extraMinutes: number
+  extraLabel: string
+}) {
+  return (
+    <>
+      {formatDuration(totalMinutes)}
+      {extraMinutes > 0 ? (
+        <span className="ot">
+          {' '}
+          ({formatDuration(extraMinutes)} {extraLabel})
+        </span>
+      ) : null}
+    </>
+  )
+}
+
 // -------------------------------------------------------------------- switch
 
 export function Switch({
@@ -106,8 +135,11 @@ export interface OptionGridProps {
   onChange: (next: string) => void
   /** Label for the escape hatch that lets someone type a value not on the list. */
   otherLabel?: string
+  /** Set only where equal-width buttons are wanted; otherwise chips size to their text. */
   columns?: 1 | 2 | 4
   placeholder?: string
+  /** The rest of the choices, revealed by the escape hatch along with the text field. */
+  moreOptions?: string[]
 }
 
 /**
@@ -121,51 +153,105 @@ export function OptionGrid({
   value,
   onChange,
   otherLabel,
-  columns = 1,
+  columns,
   placeholder,
+  moreOptions = [],
 }: OptionGridProps) {
-  const [typing, setTyping] = useState(false)
-  const known = options.includes(value)
-  const showCustom = typing || (value !== '' && !known)
+  const [expanded, setExpanded] = useState(false)
+  const known = options.includes(value) || moreOptions.includes(value)
+  const isTyped = value !== '' && !known
+  /*
+   * What the text field holds, kept apart from the chosen value.
+   *
+   * Opening "Altro…" must not drop the current selection — someone may only be looking
+   * for a choice further down the list — but it must not pre-fill the box with it
+   * either, or the first thing typed lands on the end of the old value.
+   */
+  const [custom, setCustom] = useState(() => (isTyped ? value : ''))
+  const showCustom = expanded || isTyped
+  const gridClass = columns ? `options cols-${columns}` : 'options'
+
+  const choice = (option: string) => (
+    <button
+      key={option}
+      type="button"
+      className={`option${value === option ? ' is-selected' : ''}`}
+      onClick={() => {
+        setExpanded(false)
+        setCustom('')
+        onChange(option)
+      }}
+    >
+      {option}
+    </button>
+  )
 
   return (
     <div className="stack">
-      <div className={`options cols-${columns}`}>
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`option${value === option && !typing ? ' is-selected' : ''}`}
-            onClick={() => {
-              setTyping(false)
-              onChange(option)
-            }}
-          >
-            {option}
-          </button>
-        ))}
-        {otherLabel ? (
+      <div className={gridClass}>
+        {options.map(choice)}
+        {otherLabel && (moreOptions.length > 0 || !expanded) ? (
           <button
             type="button"
-            className={`option is-other${showCustom ? ' is-selected' : ''}`}
-            onClick={() => {
-              setTyping(true)
-              if (known) onChange('')
-            }}
+            className={`option is-other${expanded ? ' is-selected' : ''}`}
+            onClick={() => setExpanded(!expanded)}
           >
             {otherLabel}
           </button>
         ) : null}
       </div>
+
+      {/* The rest of the choices, plus somewhere to type one that is not listed. */}
+      {expanded && moreOptions.length > 0 ? (
+        <div className={gridClass}>{moreOptions.map(choice)}</div>
+      ) : null}
       {showCustom ? (
         <input
           className="input"
-          value={value}
+          value={custom}
           placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          autoFocus={typing}
+          onChange={(e) => {
+            setCustom(e.target.value)
+            onChange(e.target.value)
+          }}
+          autoFocus={expanded}
         />
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Confirming a removal, inline and in words.
+ *
+ * A floating menu is fiddly to hit and easy to dismiss by accident; a strip that names
+ * the value and offers two large buttons cannot be misread. Removing only forgets the
+ * value for next time — reports that already use it keep their own copy.
+ */
+export function RemoveConfirm({
+  value,
+  removeLabel,
+  cancelLabel,
+  onRemove,
+  onCancel,
+}: {
+  value: string
+  removeLabel: string
+  cancelLabel: string
+  onRemove: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="remove-confirm">
+      <span className="remove-confirm-value">{value}</span>
+      <div className="btn-row">
+        <button type="button" className="btn btn-danger" onClick={onRemove}>
+          {removeLabel}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
     </div>
   )
 }
@@ -244,30 +330,54 @@ export function TimeBox({
 // -------------------------------------------------------------------- sheet
 
 /**
+ * How many sheets are currently open.
+ *
+ * Sheets stack — a day opens over the calendar, and its entry form opens over that.
+ * Without knowing the depth, one Escape would close every open sheet at once instead of
+ * stepping back one level.
+ */
+let openSheets = 0
+
+/**
  * A bottom sheet. Closing is always available and never asks for confirmation —
  * destructive steps are undoable instead.
  */
 export function Sheet({
   title,
+  subtitle,
   onClose,
   children,
   footer,
+  steady = false,
 }: {
   title: string
+  /** Context that must stay visible while the body scrolls — typically which day. */
+  subtitle?: string
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /**
+   * Hold one height regardless of what is inside.
+   *
+   * A sheet grows from the bottom edge, so a sheet whose contents can be swapped in
+   * place — days, in the calendar — jumps up and down as you move between a full day and
+   * an empty one. Anything the reader navigates *within* wants a steady frame.
+   */
+  steady?: boolean
 }) {
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const depth = ++openSheets
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      // Only the sheet on top responds, so Escape steps back one level.
+      if (e.key === 'Escape' && depth === openSheets) onClose()
     }
     document.addEventListener('keydown', onKey)
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
+      openSheets--
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = previous
     }
@@ -276,9 +386,17 @@ export function Sheet({
   return (
     <>
       <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className={`sheet${steady ? ' is-steady' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className="sheet-head">
-          <h2 className="sheet-title">{title}</h2>
+          <div>
+            <h2 className="sheet-title">{title}</h2>
+            {subtitle ? <p className="sheet-subtitle">{subtitle}</p> : null}
+          </div>
           <button type="button" className="sheet-close" onClick={onClose} aria-label="×">
             ✕
           </button>

@@ -12,7 +12,7 @@ import type { ScreenProps } from './shared'
 import { LANGUAGE_NAMES } from '../i18n'
 import { Card, Credit, Field, downloadBlob } from '../components/ui'
 import { PackLoader } from '../components/PackLoader'
-import { clearPack, db, requestPersistentStorage } from '../db'
+import { clearPack, requestPersistentStorage, resetEverything } from '../db'
 import {
   BackupError,
   backupFileName,
@@ -83,7 +83,7 @@ export default function SettingsScreen({
 
   const deleteEverything = async () => {
     if (!window.confirm(t.deleteAllConfirm)) return
-    await db.entries.clear()
+    await resetEverything()
     onToast({ message: t.deleteAllDone })
   }
 
@@ -93,7 +93,7 @@ export default function SettingsScreen({
   }
 
   const staleBackup =
-    settings.lastBackupAt === null || Date.now() - settings.lastBackupAt > 9 * 86_400_000
+    settings.lastBackupAt === null || Date.now() - settings.lastBackupAt > 8 * 86_400_000
 
   return (
     <div className="screen">
@@ -106,9 +106,12 @@ export default function SettingsScreen({
 
       <div className="screen-pad">
         <Card title={t.backupTitle}>
-          <p className="hint" style={{ marginTop: 0 }}>
-            {t.backupBody}
+          {/* Stated plainly and up front. Everything else on this card assumes the
+              technician understands why the file matters. */}
+          <p className="notice is-warning" style={{ marginTop: 0 }}>
+            {t.backupWarning}
           </p>
+          <p className="hint">{t.backupBody}</p>
           {staleBackup && entryCount > 0 ? <p className="error">{t.backupReminder}</p> : null}
           <div className="stack" style={{ marginTop: 14 }}>
             <button

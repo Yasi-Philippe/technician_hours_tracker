@@ -10,6 +10,7 @@ import { useState, type ReactNode } from 'react'
 import type { CompanyPack, Language, Settings } from '../types'
 import { LANGUAGE_NAMES, strings } from '../i18n'
 import { Credit, Field } from '../components/ui'
+import { Logo } from '../components/Logo'
 import { PackLoader } from '../components/PackLoader'
 
 export default function Onboarding({
@@ -111,23 +112,27 @@ export default function Onboarding({
     )
   }
 
+  // The company file is genuinely useful but not a gate. Blocking here would leave a
+  // technician who has not been sent the file yet unable to record anything at all.
   return (
     <Shell
       t={t}
       title={t.needCompanyFileTitle}
       body={t.needCompanyFileBody}
       footer={
-        <button
-          type="button"
-          className="btn btn-primary btn-lg"
-          disabled={!pack}
-          onClick={() => void onUpdate({ onboardingComplete: true })}
-        >
-          {t.start}
-        </button>
+        <div className="stack">
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={() => void onUpdate({ onboardingComplete: true })}
+          >
+            {pack ? t.start : t.skipForNow}
+          </button>
+        </div>
       }
     >
       <PackLoader t={t} label={t.loadCompanyFile} />
+      {pack ? null : <p className="hint">{t.packOptionalHint}</p>}
     </Shell>
   )
 }
@@ -157,7 +162,7 @@ function Shell({
       <div className="screen" style={{ paddingBottom: 0 }}>
         <div className="onboarding">
           <div className="onboarding-body">
-            <div className="onboarding-mark" />
+            <Logo size={52} />
             <h1>{title}</h1>
             {body ? <p>{body}</p> : null}
             {children}

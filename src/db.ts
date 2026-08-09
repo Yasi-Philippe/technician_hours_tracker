@@ -6,8 +6,9 @@
  */
 
 import Dexie, { type Table } from 'dexie'
-import type { CompanyPack, Entry, Person, Settings } from './types'
+import type { CompanyPack, CustomValues, Entry, Person, Settings } from './types'
 import { weekDates } from './lib/dates'
+import { parsePack } from './lib/pack'
 
 class AppDatabase extends Dexie {
   entries!: Table<Entry, string>
@@ -21,6 +22,32 @@ class AppDatabase extends Dexie {
       settings: 'id',
       packs: 'id',
     })
+
+    // v2: an entry's hours became a list of stretches rather than one start and end,
+    // so a split day can be totalled as a whole. Entries already on the device are
+    // rewritten in place — nobody loses a report to a schema change.
+    this.version(2)
+      .stores({
+        entries: 'id, date, updatedAt',
+        settings: 'id',
+        packs: 'id',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('entries')
+          .toCollection()
+          .modify((entry: Record<string, unknown>) => {
+            if (Array.isArray(entry.segments)) return
+            entry.segments = [
+              {
+                startMinutes: typeof entry.startMinutes === 'number' ? entry.startMinutes : 0,
+                endMinutes: typeof entry.endMinutes === 'number' ? entry.endMinutes : 0,
+              },
+            ]
+            delete entry.startMinutes
+            delete entry.endMinutes
+          }),
+      )
   }
 }
 
@@ -39,30 +66,112 @@ export function defaultSettings(): Settings {
     lastStartMinutes: 7 * 60,
     lastEndMinutes: 15 * 60,
     customColleagues: [],
+    customValues: emptyCustomValues(),
     onboardingComplete: false,
     lastBackupAt: null,
   }
 }
 
+export function emptyCustomValues(): CustomValues {
+  return { projects: [], sections: [], interventionTypes: [] }
+}
+
 export async function loadSettings(): Promise<Settings> {
   const stored = await db.settings.get('settings')
-  return stored ? { ...defaultSettings(), ...stored } : defaultSettings()
+  if (!stored) return defaultSettings()
+  // Merged field by field so settings saved before a key existed still load.
+  return {
+    ...defaultSettings(),
+    ...stored,
+    customColleagues: stored.customColleagues ?? [],
+    customValues: { ...emptyCustomValues(), ...(stored.customValues ?? {}) },
+  }
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
   await db.settings.put({ ...settings, id: 'settings' })
 }
 
+/**
+ * Read the stored pack, re-validating it on the way out.
+ *
+ * Running it back through the parser means a pack imported by an older version of the app
+ * picks up new defaults automatically. Without this, a technician carrying a pack from
+ * before a settings change keeps producing reports with the old behaviour and has no way
+ * of knowing — the file would simply be quietly wrong.
+ */
 export async function loadPack(): Promise<CompanyPack | undefined> {
-  return db.packs.get('pack')
+  const stored = await db.packs.get('pack')
+  if (!stored) return undefined
+  try {
+    return { ...parsePack(stored), id: 'pack', installedAt: stored.installedAt }
+  } catch {
+    // An unreadable pack is still better than none: the app degrades rather than
+    // pretending the technician never installed one.
+    return stored
+  }
 }
 
 export async function savePack(pack: CompanyPack): Promise<void> {
   await db.packs.put({ ...pack, id: 'pack' })
 }
 
+/**
+ * Remove the company file and everything it put into the technician's settings.
+ *
+ * Deleting the pack record alone is not enough, and that gap was visible: the last-used
+ * project and section are stored in settings, so after removing the company file the
+ * entry form still defaulted to a company project and still offered it as a choice. To
+ * the technician it looked as though the app had those names built in.
+ *
+ * The pack is read before it is deleted, so its own values can be told apart from ones
+ * the technician typed. Anything that came from the company goes; personal additions
+ * stay.
+ */
 export async function clearPack(): Promise<void> {
+  const pack = await db.packs.get('pack')
   await db.packs.delete('pack')
+  if (!pack) return
+
+  const settings = await loadSettings()
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+  const fromPack = (value: string, list: string[]) => list.some((item) => same(item, value))
+
+  await saveSettings({
+    ...settings,
+    // Conveniences, but they hold company values verbatim.
+    lastProject: '',
+    lastSection: '',
+    lastInterventionType: '',
+    // A value can end up here if an entry was saved after the pack was removed, so
+    // scrub anything the pack also supplied. Colleagues are never in the pack, so the
+    // technician's own list of people is left alone.
+    customValues: {
+      projects: settings.customValues.projects.filter(
+        (v) => !fromPack(v, pack.lists.projects),
+      ),
+      sections: settings.customValues.sections.filter(
+        (v) => !fromPack(v, pack.lists.sections),
+      ),
+      interventionTypes: settings.customValues.interventionTypes.filter(
+        (v) => !fromPack(v, pack.lists.interventionTypes),
+      ),
+    },
+  })
+}
+
+/**
+ * A genuine factory reset: entries, settings and the company file.
+ *
+ * "Delete all data" previously removed only the entries, leaving the company file and
+ * the technician's name in place — a button that did not do what it said.
+ */
+export async function resetEverything(): Promise<void> {
+  await db.transaction('rw', db.entries, db.settings, db.packs, async () => {
+    await db.entries.clear()
+    await db.settings.clear()
+    await db.packs.clear()
+  })
 }
 
 export async function entriesForWeek(anchor: string): Promise<Entry[]> {

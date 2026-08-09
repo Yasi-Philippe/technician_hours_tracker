@@ -4,16 +4,20 @@ import {
   formatClock,
   formatDuration,
   parseClock,
+  rangeMinutes,
   stepClock,
   toDecimalHours,
+  totalMinutesOf,
 } from './time'
 import { isoWeek, mondayOfWeek, reportMonthName, weekDates, weeksInISOYear } from './dates'
 
 const EIGHT_HOURS = 8 * 60
 
+const range = (start: number, end: number) => ({ startMinutes: start, endMinutes: end })
+
 describe('computeHours', () => {
   it('treats a standard day as all normal hours', () => {
-    expect(computeHours(7 * 60, 15 * 60, EIGHT_HOURS)).toEqual({
+    expect(computeHours([range(7 * 60, 15 * 60)], EIGHT_HOURS)).toEqual({
       totalMinutes: 480,
       normalMinutes: 480,
       extraMinutes: 0,
@@ -21,7 +25,7 @@ describe('computeHours', () => {
   })
 
   it('counts everything past the contractual day as overtime', () => {
-    expect(computeHours(7 * 60, 17 * 60, EIGHT_HOURS)).toEqual({
+    expect(computeHours([range(7 * 60, 17 * 60)], EIGHT_HOURS)).toEqual({
       totalMinutes: 600,
       normalMinutes: 480,
       extraMinutes: 120,
@@ -29,7 +33,7 @@ describe('computeHours', () => {
   })
 
   it('records a short day without inventing overtime', () => {
-    expect(computeHours(8 * 60 + 30, 11 * 60, EIGHT_HOURS)).toEqual({
+    expect(computeHours([range(8 * 60 + 30, 11 * 60)], EIGHT_HOURS)).toEqual({
       totalMinutes: 150,
       normalMinutes: 150,
       extraMinutes: 0,
@@ -37,7 +41,7 @@ describe('computeHours', () => {
   })
 
   it('reads an end before the start as a shift crossing midnight', () => {
-    expect(computeHours(22 * 60, 6 * 60, EIGHT_HOURS)).toEqual({
+    expect(computeHours([range(22 * 60, 6 * 60)], EIGHT_HOURS)).toEqual({
       totalMinutes: 480,
       normalMinutes: 480,
       extraMinutes: 0,
@@ -45,14 +49,52 @@ describe('computeHours', () => {
   })
 
   it('keeps the parts adding up to the total when overtime is overridden', () => {
-    const hours = computeHours(7 * 60, 17 * 60, EIGHT_HOURS, 60)
+    const hours = computeHours([range(7 * 60, 17 * 60)], EIGHT_HOURS, 60)
     expect(hours).toEqual({ totalMinutes: 600, normalMinutes: 540, extraMinutes: 60 })
     expect(hours.normalMinutes + hours.extraMinutes).toBe(hours.totalMinutes)
   })
 
   it('never lets an override exceed the hours actually worked', () => {
-    expect(computeHours(7 * 60, 15 * 60, EIGHT_HOURS, 999).extraMinutes).toBe(480)
-    expect(computeHours(7 * 60, 15 * 60, EIGHT_HOURS, -5).extraMinutes).toBe(0)
+    expect(computeHours([range(7 * 60, 15 * 60)], EIGHT_HOURS, 999).extraMinutes).toBe(480)
+    expect(computeHours([range(7 * 60, 15 * 60)], EIGHT_HOURS, -5).extraMinutes).toBe(0)
+  })
+})
+
+describe('a day split into several stretches', () => {
+  it('totals the whole day and finds the overtime across it', () => {
+    // On site 07:00–15:00, called back 17:00–19:00: ten hours, two of them extra.
+    const hours = computeHours([range(7 * 60, 15 * 60), range(17 * 60, 19 * 60)], EIGHT_HOURS)
+    expect(hours.totalMinutes).toBe(600)
+    expect(hours.normalMinutes).toBe(480)
+    expect(hours.extraMinutes).toBe(120)
+  })
+
+  it('finds overtime the per-stretch reading would miss entirely', () => {
+    // Neither stretch alone passes eight hours, so measuring them separately would
+    // report no overtime at all — the reason stretches live on one report.
+    const split = computeHours([range(7 * 60, 13 * 60), range(15 * 60, 20 * 60)], EIGHT_HOURS)
+    expect(split.totalMinutes).toBe(11 * 60)
+    expect(split.extraMinutes).toBe(3 * 60)
+
+    const separately =
+      computeHours([range(7 * 60, 13 * 60)], EIGHT_HOURS).extraMinutes +
+      computeHours([range(15 * 60, 20 * 60)], EIGHT_HOURS).extraMinutes
+    expect(separately).toBe(0)
+  })
+
+  it('adds up three stretches', () => {
+    const hours = computeHours(
+      [range(7 * 60, 10 * 60), range(11 * 60, 14 * 60), range(16 * 60, 19 * 60)],
+      EIGHT_HOURS,
+    )
+    expect(hours.totalMinutes).toBe(9 * 60)
+    expect(hours.extraMinutes).toBe(60)
+  })
+
+  it('sums stretches individually', () => {
+    expect(totalMinutesOf([range(7 * 60, 15 * 60), range(17 * 60, 19 * 60)])).toBe(600)
+    expect(rangeMinutes(range(22 * 60, 6 * 60))).toBe(480)
+    expect(totalMinutesOf([])).toBe(0)
   })
 })
 

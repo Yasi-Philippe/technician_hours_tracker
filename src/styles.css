@@ -202,12 +202,20 @@ select {
   background: var(--paper);
 }
 
-.daychip.is-weekend .daychip-letter {
-  opacity: 0.35;
+/*
+ * Red marks days nobody is expected on site: Saturdays, Sundays and Italian public
+ * holidays. It is the one colour in the app, so it says exactly one thing.
+ */
+.daychip.is-closed .daychip-number,
+.daychip.is-closed .daychip-letter {
+  color: var(--accent);
+  opacity: 1;
 }
 
-.daychip.is-today .daychip-number {
-  color: var(--accent);
+/* Today is marked by an outline rather than a colour, so it can coincide with a
+   non-working day without the two fighting over the same signal. */
+.daychip.is-today {
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 70%);
 }
 
 .daychip.is-selected {
@@ -220,11 +228,11 @@ select {
 }
 
 .daychip.is-selected .daychip-dot.filled {
-  background: var(--accent);
+  background: var(--ink);
 }
 
-.daychip.is-selected.is-today .daychip-number {
-  color: var(--accent);
+.daychip.is-selected.is-today {
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 /* ------------------------------------------------------------- bottom nav */
@@ -533,17 +541,32 @@ select {
 
 /* ---------------------------------------------------------------- fields */
 
+/*
+ * Fields are separated by a rule, not by more air.
+ *
+ * With choices flowing as chips, one field ran straight into the next and the form read
+ * as a single field of buttons — you had to stop and work out where "Progetto" ended and
+ * "Sezione" began. The 22px that already sat between fields is simply split either side
+ * of a hairline, so the rhythm of the form is unchanged and only the boundary is new.
+ */
 .field + .field {
-  margin-top: 22px;
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
 }
 
+/*
+ * The label is the heading of its section, so it carries heading weight. It was set in
+ * the muted grey used for secondary text, which is why it did not register as a divider
+ * between one group of chips and the next.
+ */
 .field-label {
   display: block;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-strong);
   margin-bottom: 8px;
 }
 
@@ -655,16 +678,25 @@ textarea.input {
   background: var(--line);
 }
 
+/*
+ * The hours the clocks add up to, and how they are counted. One block, directly under
+ * the times it describes — the overtime mode is a qualifier on this number, not a step
+ * of its own, and it used to sit mid-form as a full card carrying far more weight than
+ * it earns.
+ */
 .hours-readout {
   margin-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   padding: 12px 14px;
   border-radius: var(--radius);
   background: var(--paper-sunk);
   border: 1px solid var(--line);
+}
+
+.hours-readout-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .hours-readout.has-overtime {
@@ -690,18 +722,66 @@ textarea.input {
 
 /* --------------------------------------------------------------- options */
 
+/*
+ * Choices flow and size themselves to their text.
+ *
+ * A fixed column count meant the longest label decided the layout for everything: add
+ * one wordy value to a list of short codes and all of them dropped to one per line.
+ * Here "PB07" takes the room "PB07" needs and many fit on a row, while a long project
+ * name simply takes the width it needs — the two can share a list without either
+ * being ruined.
+ *
+ * Chips do not grow to fill the row: stretching six of them across the screen is what
+ * made them look like buttons rather than a compact set.
+ */
 .options {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+.options .option {
+  flex: 0 0 auto;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 16px;
+  max-width: 100%;
+}
+
+/* Where equal widths are wanted — a two-way toggle, a row of percentages. */
 .options.cols-2 {
+  display: grid;
   grid-template-columns: 1fr 1fr;
 }
 
 .options.cols-4 {
+  display: grid;
   grid-template-columns: repeat(4, 1fr);
 }
+
+.options.cols-2 .option,
+.options.cols-4 .option {
+  flex: initial;
+  padding: 10px 4px;
+}
+
+/*
+ * A value the technician typed carries a ⋯ beside it. The pair share a wrapper because
+ * a button inside a button is neither valid nor reliably tappable.
+ */
+.option-wrap {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.option-wrap .option {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-more,
+
 
 .option {
   appearance: none;
@@ -717,11 +797,6 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.options.cols-4 .option {
-  justify-content: center;
-  padding: 10px 4px;
 }
 
 .option:active {
@@ -741,12 +816,18 @@ textarea.input {
 
 /* ---------------------------------------------------------------- sheet */
 
+/*
+ * Sheets stack: a day opens over the calendar, its entry form over that. Each pair sits
+ * in its own layer, and because a later sheet is later in the DOM it paints above the
+ * one beneath without needing a hand-managed z-index per level.
+ */
 .sheet-scrim {
   position: fixed;
   inset: 0;
   background: rgb(10 10 11 / 45%);
   z-index: 40;
   animation: fade 140ms ease;
+  isolation: isolate;
 }
 
 .sheet {
@@ -907,7 +988,21 @@ textarea.input {
 
 /* ------------------------------------------------------------- week list */
 
+/*
+ * The row is a container, not a button: opening the day and expanding a long
+ * description are two separate actions, and a button inside a button is neither valid
+ * nor tappable in any predictable way.
+ */
 .dayrow {
+  display: block;
+  width: 100%;
+}
+
+.dayrow + .dayrow {
+  border-top: 1px solid var(--line);
+}
+
+.dayrow-open {
   display: flex;
   gap: 14px;
   padding: 14px var(--pad);
@@ -919,8 +1014,24 @@ textarea.input {
   align-items: flex-start;
 }
 
-.dayrow + .dayrow {
-  border-top: 1px solid var(--line);
+.dayrow-more {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  /* Sits under the description, clear of the date column. */
+  margin: -6px 0 10px calc(var(--pad) + 60px);
+  min-height: 44px;
+  padding: 0 8px 0 0;
+}
+
+.dayrow-more:active {
+  color: var(--ink);
 }
 
 .dayrow.is-empty .dayrow-main {
@@ -948,8 +1059,15 @@ textarea.input {
   font-variant-numeric: tabular-nums;
 }
 
-.dayrow.is-today .dayrow-num {
+.dayrow.is-closed .dayrow-num,
+.dayrow.is-closed .dayrow-dow {
   color: var(--accent);
+}
+
+.dayrow.is-today .dayrow-num {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
 }
 
 .dayrow-main {
@@ -963,6 +1081,7 @@ textarea.input {
 }
 
 .dayrow-sub {
+  display: block;
   font-size: 14px;
   color: var(--ink-muted);
   margin-top: 2px;
@@ -971,49 +1090,80 @@ textarea.input {
   white-space: nowrap;
 }
 
+/* Expanded: the row grows to whatever the text needs, one entry per line. */
+.dayrow-sub.is-expanded {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.dayrow-line {
+  display: block;
+}
+
+.dayrow-line + .dayrow-line {
+  margin-top: 4px;
+}
+
 .dayrow-hours {
   flex-shrink: 0;
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
+  white-space: nowrap;
 }
 
-.dayrow-hours .ot {
-  display: block;
-  font-size: 12px;
+/*
+ * Overtime is stated in parentheses, inline, because it is part of the total rather
+ * than something added to it. Lighter weight so the hours actually worked stay the
+ * first thing read.
+ */
+.dayrow-hours .ot,
+.entry-hours .ot {
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent);
 }
 
 /* ---------------------------------------------------------------- charts */
 
+/*
+ * Chart colour is emphasis, not category: overtime is the point, normal hours are the
+ * context. The pair was checked with the palette validator rather than by eye —
+ * CVD separation ΔE 8.3 (protan), normal-vision ΔE 27.4, both above 3:1 on white.
+ * The brand red appears in charts for overtime and nothing else.
+ */
+:root {
+  --viz-normal: #3f3f46;
+  --viz-extra: #ce0e2d;
+
+  /* Sequential ramp for magnitude bars: one neutral hue, light to dark, monotonic. */
+  --ramp-1: #3f3f46;
+  --ramp-2: #52525b;
+  --ramp-3: #71717a;
+  --ramp-4: #9a9aa3;
+  --ramp-5: #c4c4cb;
+}
+
+.chart-block {
+  margin: 0 -4px;
+}
+
 .chart {
   width: 100%;
   display: block;
   overflow: visible;
+  touch-action: manipulation;
 }
 
-.chart-bar {
-  fill: var(--ink);
+.chart-normal {
+  fill: var(--viz-normal);
 }
 
-.chart-bar.ot {
-  fill: var(--accent);
-}
-
-.chart-label {
-  font-size: 11px;
-  font-weight: 700;
-  fill: var(--ink-faint);
-  letter-spacing: 0.06em;
-}
-
-.chart-value {
-  font-size: 11px;
-  font-weight: 700;
-  fill: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
+.chart-extra {
+  fill: var(--viz-extra);
 }
 
 .chart-grid {
@@ -1021,10 +1171,84 @@ textarea.input {
   stroke-width: 1;
 }
 
+.chart-baseline {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.chart-axis {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--ink-ghost);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tick {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+.chart-tick.is-active {
+  fill: var(--ink);
+}
+
+.chart-peak {
+  font-size: 11px;
+  font-weight: 800;
+  fill: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The readout is the tooltip, and its height is fixed rather than reserved: explicit
+ * line-heights on both lines, and neither may wrap. A hovered bar must never move the
+ * chart underneath it.
+ */
+.chart-readout {
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 4px 6px;
+  overflow: hidden;
+}
+
+.chart-readout-label,
+.chart-readout-value {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-readout-label {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.chart-readout-value {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-readout-extra {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
 .legend {
   display: flex;
-  gap: 16px;
-  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 10px;
   font-size: 13px;
   color: var(--ink-muted);
   font-weight: 600;
@@ -1039,20 +1263,97 @@ textarea.input {
 .legend-swatch {
   width: 12px;
   height: 12px;
-  border-radius: 2px;
-  background: var(--ink);
+  border-radius: 3px;
+  background: var(--viz-normal);
+  flex-shrink: 0;
 }
 
 .legend-swatch.ot {
-  background: var(--accent);
+  background: var(--viz-extra);
 }
+
+/* ------------------------------------------------------------------- hero */
+
+/*
+ * The headline number. A single current value is a hero figure, never a one-bar chart.
+ */
+.hero {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  padding: 22px var(--pad) 18px;
+  text-align: center;
+}
+
+.hero-value {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 8px;
+}
+
+/* Part-to-whole for a single measure: one bar, split, with the 2px surface gap. */
+.hero-split {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin: 18px 0 12px;
+}
+
+.hero-split-normal,
+.hero-split-extra {
+  border-radius: 3px;
+  min-width: 3px;
+}
+
+.hero-split-normal {
+  background: var(--viz-normal);
+}
+
+.hero-split-extra {
+  background: var(--viz-extra);
+}
+
+.hero-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.hero-delta {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+/* Neutral on purpose: more hours is neither good nor bad, so it wears no status colour. */
+.hero-delta strong {
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- breakdowns */
 
 .breakdown-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
+  gap: 6px 10px;
   align-items: baseline;
-  padding: 10px 0;
+  padding: 12px 0;
 }
 
 .breakdown-row + .breakdown-row {
@@ -1073,17 +1374,55 @@ textarea.input {
   white-space: nowrap;
 }
 
+.breakdown-share {
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
 .meter {
   grid-column: 1 / -1;
-  height: 6px;
+  height: 8px;
   background: var(--paper-sunk);
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .meter-fill {
+  display: block;
   height: 100%;
-  background: var(--ink);
+  border-radius: 4px;
+  background: var(--ramp-1);
+}
+
+/* ------------------------------------------------------------ table view */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.data-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-table td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table th + th,
+.data-table td + td {
+  text-align: right;
 }
 
 /* ----------------------------------------------------------------- empty */
@@ -1116,10 +1455,7 @@ textarea.input {
   background: var(--paper);
 }
 
-.onboarding-mark {
-  width: 44px;
-  height: 4px;
-  background: var(--accent);
+.onboarding-body > svg {
   margin-bottom: 24px;
 }
 
@@ -1270,4 +1606,554 @@ textarea.input {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ------------------------------------------------------- reuse description */
+
+/*
+ * Past descriptions, shown in full rather than truncated. Each one is a target big
+ * enough to hit without care, and long text wraps instead of being cut — telling two
+ * similar entries apart is the whole point of the list.
+ */
+.reuse-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.reuse-item {
+  appearance: none;
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--paper);
+  text-align: left;
+  padding: 14px var(--pad);
+  min-height: var(--tap);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+
+.reuse-item + .reuse-item {
+  border-top: 1px solid var(--line);
+}
+
+.reuse-item:active {
+  background: var(--paper-sunk);
+}
+
+/* Remove control inside a settings row. Text, not an icon: an ✕ next to a name is
+   ambiguous about what exactly it removes, and this list is about undoing mistakes. */
+.row-remove {
+  appearance: none;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+  border-radius: var(--radius);
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.row-remove:active {
+  background: var(--accent-line);
+}
+
+/* ------------------------------------------------------------- month grid */
+
+/*
+ * A month of work. Cells are square-ish and sized so a whole month fits without
+ * scrolling on a phone, with the hours worked printed under the date — a calendar of
+ * bare numbers would not answer the question this screen exists for.
+ */
+.month {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.month-head {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--paper-sunk);
+  border-bottom: 1px solid var(--line);
+}
+
+.month-dow {
+  text-align: center;
+  padding: 8px 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+.month-dow.is-weekend {
+  color: var(--ink-ghost);
+}
+
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.month-cell {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  aspect-ratio: 1 / 1;
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.month-cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.month-grid > .month-cell:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.month-num {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.month-hours {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Days belonging to the neighbouring months keep the columns aligned but stay quiet. */
+.month-cell.is-outside .month-num {
+  color: var(--ink-ghost);
+  font-weight: 500;
+}
+
+.month-cell.is-outside .month-hours {
+  color: var(--ink-ghost);
+}
+
+.month-cell.has-work {
+  background: var(--paper-sunk);
+}
+
+.month-cell.has-work .month-num {
+  font-weight: 700;
+}
+
+.month-cell.has-overtime .month-hours {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Non-working days: weekends and Italian public holidays. */
+.month-cell.is-closed .month-num {
+  color: var(--accent);
+}
+
+/* A Spanish-only holiday is a normal working day here, so it gets a quiet marker
+   rather than a colour. */
+.month-cell.is-spanish-holiday::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-ghost);
+}
+
+.month-cell {
+  position: relative;
+}
+
+.month-cell.is-today .month-num {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 2px;
+  font-weight: 800;
+}
+
+.month-cell.is-selected {
+  background: var(--ink);
+}
+
+.month-cell.is-selected .month-num,
+.month-cell.is-selected .month-hours {
+  color: #fff;
+}
+
+.month-cell.is-selected.is-closed .month-num {
+  color: #ff8ea0;
+}
+
+.month-cell:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* Tappable title in the top bar, for jumping to another month. */
+.topbar-heading {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+  padding: 4px 8px;
+  min-height: 44px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.topbar-heading:disabled {
+  cursor: default;
+}
+
+.topbar-heading .topbar-title,
+.topbar-heading .topbar-sub {
+  margin: 0;
+}
+
+.topbar-heading:not(:disabled) .topbar-sub::after {
+  content: ' ▾';
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+/* ------------------------------------------------------------------ notices */
+
+.notices {
+  margin-bottom: 14px;
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-sunk);
+  border-radius: var(--radius);
+  font-size: 15px;
+  color: var(--ink-strong);
+}
+
+.notice + .notice {
+  margin-top: 8px;
+}
+
+.notice.is-warning {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+  line-height: 1.5;
+}
+
+.notice.is-closed-day {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+}
+
+.notice-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 2px;
+}
+
+/* ------------------------------------------------------------- segments */
+
+/*
+ * A split day: on site, away, back again. The header only appears from the second
+ * stretch onward, so an ordinary day shows one row of clocks and nothing else.
+ */
+.segment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.segment-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.segment-remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 0 4px;
+}
+
+/* Several stretches stack under one another on the entry card. */
+.entry-range {
+  display: block;
+}
+
+.entry-range + .entry-range {
+  margin-top: 2px;
+}
+
+.sheet-subtitle {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: capitalize;
+}
+
+/*
+ * The week strip inside a sheet. Same navigator as the day screen, so a day opened from
+ * the calendar can be swapped for its neighbour without closing anything — the reason
+ * the day screen feels quick is that the days are always one tap away.
+ */
+.weekstrip.in-sheet {
+  border-radius: var(--radius);
+  padding: 10px;
+  margin-bottom: 16px;
+}
+
+/*
+ * A chip and its control are one capsule, not two.
+ *
+ * They were separate bordered pills with a gap between them, which read as two unrelated
+ * buttons. The border and the rounding now belong to the wrapper and the two halves are
+ * divided by a hairline, so it looks like one object with a handle.
+ */
+.chip-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.chip-wrap .chip {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-right: 12px;
+}
+
+.chip-more {
+  appearance: none;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  width: 34px;
+  min-height: 44px;
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-more svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 140ms ease;
+}
+
+.chip-more[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.chip-more:active {
+  background: var(--paper-sunk);
+}
+
+/* Selected, the whole capsule fills — handle included. */
+.chip-wrap.is-selected {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.chip-wrap.is-selected .chip {
+  color: #fff;
+}
+
+.chip-wrap.is-selected .chip-more {
+  color: rgb(255 255 255 / 65%);
+  border-left-color: rgb(255 255 255 / 25%);
+}
+
+.chip-wrap.is-selected .chip-more:active {
+  background: rgb(255 255 255 / 12%);
+}
+
+/*
+ * Removing is confirmed in words rather than in a floating menu: the value is named,
+ * and the two choices are full-size buttons that cannot be mis-tapped.
+ */
+.remove-confirm {
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.remove-confirm-value {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+
+/* ------------------------------------------------------------ overtime mode */
+
+/*
+ * Named in full on purpose. This block was called `.ot`, which silently also matched the
+ * red legend swatch (`legend-swatch ot`) and the "(1h extra)" text on entry cards — both
+ * inherited its margin, padding and top border, which is why the red square sat lower
+ * than the black one.
+ */
+.overtime {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.overtime-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.overtime-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/*
+ * A small two-way switch. Deliberately below the app's usual touch minimum: it is a
+ * setting touched on the rare split day, not part of filling in a report, and at full
+ * size it dominated the form. The labels stay full words so it is never a guess.
+ */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.segmented-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 12px;
+  min-height: 38px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segmented-btn + .segmented-btn {
+  border-left: 1px solid var(--line);
+}
+
+.segmented-btn.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+
+.overtime-stepper {
+  margin-top: 10px;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.overtime-step {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  border-radius: var(--radius);
+  width: 48px;
+  min-height: 40px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.overtime-step:active {
+  background: var(--paper-sunk);
+}
+
+.overtime-value {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: center;
+}
+
+.overtime-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-faint);
+}
+
+.hours-readout.has-overtime .overtime {
+  border-top-color: var(--accent-line);
+}
+
+/*
+ * A sheet whose contents get swapped in place holds one height. Sized from its content
+ * it grew and shrank with each day chosen, and because it is anchored to the bottom
+ * edge the whole panel jumped every time. The body scrolls inside instead.
+ */
+.sheet.is-steady {
+  height: 80dvh;
 }

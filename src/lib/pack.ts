@@ -6,7 +6,7 @@
  * with a message a technician could act on rather than a stack trace.
  */
 
-import type { CompanyPack, CompanyPackFile, DurationFormat, Person, SheetMapping } from '../types'
+import type { CompanyPack, CompanyPackFile, DurationFormat, SheetMapping } from '../types'
 import { COLUMN_KEYS } from '../types'
 import { base64ToBytes } from './base64'
 
@@ -45,17 +45,6 @@ function asStringList(value: unknown, field: string): string[] {
   return value.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
 }
 
-function asPeople(value: unknown, field: string): Person[] {
-  if (!Array.isArray(value)) throw new PackError(`"${field}" must be a list`)
-  return value
-    .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
-    .map((v) => ({
-      name: asOptionalString(v.name, '').trim(),
-      email: asOptionalString(v.email, '').trim(),
-    }))
-    .filter((p) => p.name !== '')
-}
-
 function parseSheet(value: unknown): SheetMapping {
   if (typeof value !== 'object' || value === null) throw new PackError('"sheet" is missing')
   const raw = value as Record<string, unknown>
@@ -82,11 +71,18 @@ function parseSheet(value: unknown): SheetMapping {
     throw new PackError('"sheet.columns" does not map a single column')
   }
 
+  // `durationFormat` was a single setting covering total, normal and overtime hours.
+  // It is still accepted so packs already handed out keep importing, but the two
+  // replacements are what the exporter reads.
+  const legacy = asOptionalString(raw.durationFormat, '') as DurationFormat | ''
   const timeFormat = asOptionalString(raw.timeFormat, 'fraction') as DurationFormat
-  const durationFormat = asOptionalString(raw.durationFormat, 'fraction') as DurationFormat
+  const totalFormat = asOptionalString(raw.totalFormat, legacy || 'fraction') as DurationFormat
+  const hoursFormat = asOptionalString(raw.hoursFormat, legacy || 'decimal') as DurationFormat
+
   for (const [name, format] of [
     ['timeFormat', timeFormat],
-    ['durationFormat', durationFormat],
+    ['totalFormat', totalFormat],
+    ['hoursFormat', hoursFormat],
   ] as const) {
     if (!DURATION_FORMATS.includes(format)) {
       throw new PackError(`"sheet.${name}" must be one of: ${DURATION_FORMATS.join(', ')}`)
@@ -99,7 +95,8 @@ function parseSheet(value: unknown): SheetMapping {
     dataStartRow,
     columns,
     timeFormat,
-    durationFormat,
+    totalFormat,
+    hoursFormat,
     percentScale,
     uppercaseMonth: raw.uppercaseMonth !== false,
     emptySectionText: asOptionalString(raw.emptySectionText, 'N/A'),
@@ -153,7 +150,6 @@ export function parsePack(json: unknown): CompanyPackFile {
         listsRaw.interventionTypes ?? [],
         'lists.interventionTypes',
       ),
-      colleagues: asPeople(listsRaw.colleagues ?? [], 'lists.colleagues'),
     },
     defaults: {
       startMinutes: clampMinutes(defaultsRaw.startMinutes, 7 * 60),

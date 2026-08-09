@@ -6,30 +6,34 @@
  */
 
 import type { Language } from '../types'
-import { formatDayNumber, formatDayShort, isWeekend, todayISO, weekDates } from '../lib/dates'
+import { formatDayNumber, formatDayShort, todayISO, weekDates } from '../lib/dates'
+import { isNonWorkingDay } from '../lib/holidays'
 
 export function WeekStrip({
   anchor,
   selected,
   filledDates,
   language,
+  className = '',
   onSelect,
 }: {
   anchor: string
   selected: string
   filledDates: Set<string>
   language: Language
+  /** Extra class, so the strip can sit inside a sheet as well as under the top bar. */
+  className?: string
   onSelect: (date: string) => void
 }) {
   const today = todayISO()
   return (
-    <div className="weekstrip">
+    <div className={`weekstrip${className ? ` ${className}` : ''}`}>
       {weekDates(anchor).map((date) => {
         const classes = [
           'daychip',
           date === selected ? 'is-selected' : '',
           date === today ? 'is-today' : '',
-          isWeekend(date) ? 'is-weekend' : '',
+          isNonWorkingDay(date) ? 'is-closed' : '',
         ]
           .filter(Boolean)
           .join(' ')

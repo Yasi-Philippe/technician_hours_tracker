@@ -12,12 +12,13 @@
  */
 
 import { useMemo, useRef, useState } from 'react'
-import type { ColumnKey, CompanyPackFile, DurationFormat, Person } from '../types'
+import type { ColumnKey, CompanyPackFile, DurationFormat } from '../types'
 import { COLUMN_KEYS } from '../types'
 import { bytesToBase64 } from '../lib/base64'
 import { columnLetter, readHeaderRow } from '../lib/xlsx'
 import { PackError, parsePack, serialisePack } from '../lib/pack'
 import { downloadBlob } from '../components/ui'
+import { Logo } from '../components/Logo'
 import { formatClock, parseClock } from '../lib/time'
 
 /** Columns without which the report would be meaningless. */
@@ -52,7 +53,8 @@ interface Draft {
   dataStartRow: number
   columns: Partial<Record<ColumnKey, number>>
   timeFormat: DurationFormat
-  durationFormat: DurationFormat
+  totalFormat: DurationFormat
+  hoursFormat: DurationFormat
   percentScale: 1 | 100
   uppercaseMonth: boolean
   emptySectionText: string
@@ -61,7 +63,6 @@ interface Draft {
   projects: string
   sections: string
   interventionTypes: string
-  colleagues: string
   startMinutes: number
   endMinutes: number
   contractualDailyMinutes: number
@@ -78,7 +79,8 @@ const EMPTY: Draft = {
   dataStartRow: 10,
   columns: {},
   timeFormat: 'fraction',
-  durationFormat: 'fraction',
+  totalFormat: 'fraction',
+  hoursFormat: 'decimal',
   percentScale: 1,
   uppercaseMonth: true,
   emptySectionText: 'N/A',
@@ -87,7 +89,6 @@ const EMPTY: Draft = {
   projects: '',
   sections: '',
   interventionTypes: '',
-  colleagues: '',
   startMinutes: 7 * 60,
   endMinutes: 15 * 60,
   contractualDailyMinutes: 8 * 60,
@@ -156,7 +157,8 @@ export default function PackBuilder() {
         dataStartRow: parsed.sheet.dataStartRow,
         columns: parsed.sheet.columns,
         timeFormat: parsed.sheet.timeFormat,
-        durationFormat: parsed.sheet.durationFormat,
+        totalFormat: parsed.sheet.totalFormat,
+        hoursFormat: parsed.sheet.hoursFormat,
         percentScale: parsed.sheet.percentScale,
         uppercaseMonth: parsed.sheet.uppercaseMonth,
         emptySectionText: parsed.sheet.emptySectionText,
@@ -165,9 +167,6 @@ export default function PackBuilder() {
         projects: parsed.lists.projects.join('\n'),
         sections: parsed.lists.sections.join('\n'),
         interventionTypes: parsed.lists.interventionTypes.join('\n'),
-        colleagues: parsed.lists.colleagues
-          .map((p) => (p.email ? `${p.name}, ${p.email}` : p.name))
-          .join('\n'),
         startMinutes: parsed.defaults.startMinutes,
         endMinutes: parsed.defaults.endMinutes,
         contractualDailyMinutes: parsed.defaults.contractualDailyMinutes,
@@ -192,7 +191,8 @@ export default function PackBuilder() {
       dataStartRow: draft.dataStartRow,
       columns: draft.columns,
       timeFormat: draft.timeFormat,
-      durationFormat: draft.durationFormat,
+      totalFormat: draft.totalFormat,
+      hoursFormat: draft.hoursFormat,
       percentScale: draft.percentScale,
       uppercaseMonth: draft.uppercaseMonth,
       emptySectionText: draft.emptySectionText.trim() || 'N/A',
@@ -202,7 +202,6 @@ export default function PackBuilder() {
       projects: lines(draft.projects),
       sections: lines(draft.sections),
       interventionTypes: lines(draft.interventionTypes),
-      colleagues: parsePeople(draft.colleagues),
     },
     defaults: {
       startMinutes: draft.startMinutes,
@@ -236,7 +235,7 @@ export default function PackBuilder() {
   return (
     <div className="builder">
       <header className="builder-head">
-        <div className="onboarding-mark" />
+        <Logo size={44} />
         <h1>Company Pack Builder</h1>
         <p>
           Turns a company's Excel template and its lists into the single file a technician
@@ -362,10 +361,16 @@ export default function PackBuilder() {
               onChange={(value) => set('timeFormat', value)}
             />
           </Labelled>
-          <Labelled label="Durations">
+          <Labelled label="Total hours column">
             <FormatSelect
-              value={draft.durationFormat}
-              onChange={(value) => set('durationFormat', value)}
+              value={draft.totalFormat}
+              onChange={(value) => set('totalFormat', value)}
+            />
+          </Labelled>
+          <Labelled label="Normal and overtime hours columns">
+            <FormatSelect
+              value={draft.hoursFormat}
+              onChange={(value) => set('hoursFormat', value)}
             />
           </Labelled>
           <Labelled label="Status column">
@@ -455,12 +460,6 @@ export default function PackBuilder() {
             value={draft.interventionTypes}
             onChange={(value) => set('interventionTypes', value)}
             hint="One per line, spelled exactly as the report must show them."
-          />
-          <ListField
-            label="Colleagues"
-            value={draft.colleagues}
-            onChange={(value) => set('colleagues', value)}
-            hint="One per line: Name, email"
           />
         </div>
       </Step>
@@ -645,13 +644,6 @@ function lines(value: string): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line !== '')
-}
-
-function parsePeople(value: string): Person[] {
-  return lines(value).map((line) => {
-    const [name, email] = line.split(',')
-    return { name: (name ?? '').trim(), email: (email ?? '').trim() }
-  })
 }
 
 function base64ToBytesSafe(base64: string): Uint8Array {

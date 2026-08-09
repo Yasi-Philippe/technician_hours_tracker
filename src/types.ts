@@ -13,6 +13,12 @@ export interface Person {
   email: string
 }
 
+/** A stretch of work: minutes since local midnight, end after start. */
+export interface TimeRange {
+  startMinutes: number
+  endMinutes: number
+}
+
 /**
  * One intervention, on one day, by one technician.
  *
@@ -24,11 +30,18 @@ export interface Entry {
   id: string
   /** Local calendar date, `YYYY-MM-DD`. Never a timestamp: a work day is not an instant. */
   date: string
-  /** Minutes since local midnight. */
-  startMinutes: number
-  endMinutes: number
   /**
-   * Overtime is normally derived from start and end. This holds a manual figure for
+   * One or more stretches of work, in order.
+   *
+   * A day is often split — on site 07:00–15:00, called back 17:00–19:00. Recording that
+   * as two separate reports would compute overtime twice over, once per report, and
+   * neither would exceed the contractual day: ten hours worked would show as none extra.
+   * Keeping the stretches together means the day is totalled once, and the two hours
+   * past eight are correctly overtime.
+   */
+  segments: TimeRange[]
+  /**
+   * Overtime is normally derived from the segments. This holds a manual figure for
    * the days reality does not cooperate; `null` means "calculate it".
    */
   extraMinutesOverride: number | null
@@ -45,6 +58,16 @@ export interface Entry {
   updatedAt: number
 }
 
+/** The hand-typed additions to each pick list. */
+export interface CustomValues {
+  projects: string[]
+  sections: string[]
+  interventionTypes: string[]
+}
+
+/** Which remembered list a management control is operating on. */
+export type CustomListKey = keyof CustomValues | 'colleagues'
+
 export interface Settings {
   id: 'settings'
   technician: Person
@@ -55,8 +78,13 @@ export interface Settings {
   lastInterventionType: string
   lastStartMinutes: number
   lastEndMinutes: number
-  /** Colleagues typed by hand, remembered alongside the ones from the pack. */
+  /**
+   * Values typed by hand rather than chosen from the pack, remembered so they can be
+   * offered again. Kept separate from the pack's own lists: the pack is the company's
+   * to change, these belong to the technician and only they can remove them.
+   */
   customColleagues: Person[]
+  customValues: CustomValues
   onboardingComplete: boolean
   lastBackupAt: number | null
 }
@@ -117,10 +145,19 @@ export interface SheetMapping {
   dataStartRow: number
   /** Zero-based column index per field. Omit a key to leave that column alone. */
   columns: Partial<Record<ColumnKey, number>>
-  /** How clock times are written. */
+  /** How clock times are written — the start and end of the shift. */
   timeFormat: DurationFormat
-  /** How durations (total / normal / extra) are written. */
-  durationFormat: DurationFormat
+  /**
+   * How the total-hours column is written.
+   *
+   * Kept separate from `hoursFormat` because templates routinely format these columns
+   * differently: a total sitting in a `h:mm:ss` cell needs a day fraction, while the
+   * normal- and overtime-hours columns are usually plain `0.00` numbers. Writing a
+   * fraction into a decimal cell silently shows `0.33` where `8.00` was meant.
+   */
+  totalFormat: DurationFormat
+  /** How the normal-hours and overtime-hours columns are written. */
+  hoursFormat: DurationFormat
   /** `1` for a template whose cell is formatted as a percentage, `100` for a plain number. */
   percentScale: 1 | 100
   /** Uppercase the Italian month name, as most templates do. */
@@ -149,11 +186,15 @@ export interface CompanyPack {
     impresa: string
     cliente: string
   }
+  /**
+   * The pick lists. Deliberately no colleagues: who a technician works with is their
+   * own business and changes daily, and shipping a staff list to every phone spreads
+   * personal data further than the job needs. Names are typed once and remembered.
+   */
   lists: {
     projects: string[]
     sections: string[]
     interventionTypes: string[]
-    colleagues: Person[]
   }
   defaults: {
     startMinutes: number
