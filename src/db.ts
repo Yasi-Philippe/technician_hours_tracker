@@ -118,7 +118,8 @@ export async function clearPack(): Promise<void> {
     lastSection: '',
     lastInterventionType: '',
     // A value can end up here if an entry was saved after the pack was removed, so
-    // scrub anything the pack also supplied.
+    // scrub anything the pack also supplied. Colleagues are never in the pack, so the
+    // technician's own list of people is left alone.
     customValues: {
       projects: settings.customValues.projects.filter(
         (v) => !fromPack(v, pack.lists.projects),
@@ -130,9 +131,6 @@ export async function clearPack(): Promise<void> {
         (v) => !fromPack(v, pack.lists.interventionTypes),
       ),
     },
-    customColleagues: settings.customColleagues.filter(
-      (person) => !pack.lists.colleagues.some((other) => same(other.name, person.name)),
-    ),
   })
 }
 

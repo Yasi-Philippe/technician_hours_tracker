@@ -6,7 +6,7 @@
  * with a message a technician could act on rather than a stack trace.
  */
 
-import type { CompanyPack, CompanyPackFile, DurationFormat, Person, SheetMapping } from '../types'
+import type { CompanyPack, CompanyPackFile, DurationFormat, SheetMapping } from '../types'
 import { COLUMN_KEYS } from '../types'
 import { base64ToBytes } from './base64'
 
@@ -43,17 +43,6 @@ function asNumber(value: unknown, field: string): number {
 function asStringList(value: unknown, field: string): string[] {
   if (!Array.isArray(value)) throw new PackError(`"${field}" must be a list`)
   return value.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
-}
-
-function asPeople(value: unknown, field: string): Person[] {
-  if (!Array.isArray(value)) throw new PackError(`"${field}" must be a list`)
-  return value
-    .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
-    .map((v) => ({
-      name: asOptionalString(v.name, '').trim(),
-      email: asOptionalString(v.email, '').trim(),
-    }))
-    .filter((p) => p.name !== '')
 }
 
 function parseSheet(value: unknown): SheetMapping {
@@ -161,7 +150,6 @@ export function parsePack(json: unknown): CompanyPackFile {
         listsRaw.interventionTypes ?? [],
         'lists.interventionTypes',
       ),
-      colleagues: asPeople(listsRaw.colleagues ?? [], 'lists.colleagues'),
     },
     defaults: {
       startMinutes: clampMinutes(defaultsRaw.startMinutes, 7 * 60),

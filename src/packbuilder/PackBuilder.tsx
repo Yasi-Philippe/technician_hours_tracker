@@ -12,7 +12,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react'
-import type { ColumnKey, CompanyPackFile, DurationFormat, Person } from '../types'
+import type { ColumnKey, CompanyPackFile, DurationFormat } from '../types'
 import { COLUMN_KEYS } from '../types'
 import { bytesToBase64 } from '../lib/base64'
 import { columnLetter, readHeaderRow } from '../lib/xlsx'
@@ -63,7 +63,6 @@ interface Draft {
   projects: string
   sections: string
   interventionTypes: string
-  colleagues: string
   startMinutes: number
   endMinutes: number
   contractualDailyMinutes: number
@@ -90,7 +89,6 @@ const EMPTY: Draft = {
   projects: '',
   sections: '',
   interventionTypes: '',
-  colleagues: '',
   startMinutes: 7 * 60,
   endMinutes: 15 * 60,
   contractualDailyMinutes: 8 * 60,
@@ -169,9 +167,6 @@ export default function PackBuilder() {
         projects: parsed.lists.projects.join('\n'),
         sections: parsed.lists.sections.join('\n'),
         interventionTypes: parsed.lists.interventionTypes.join('\n'),
-        colleagues: parsed.lists.colleagues
-          .map((p) => (p.email ? `${p.name}, ${p.email}` : p.name))
-          .join('\n'),
         startMinutes: parsed.defaults.startMinutes,
         endMinutes: parsed.defaults.endMinutes,
         contractualDailyMinutes: parsed.defaults.contractualDailyMinutes,
@@ -207,7 +202,6 @@ export default function PackBuilder() {
       projects: lines(draft.projects),
       sections: lines(draft.sections),
       interventionTypes: lines(draft.interventionTypes),
-      colleagues: parsePeople(draft.colleagues),
     },
     defaults: {
       startMinutes: draft.startMinutes,
@@ -467,12 +461,6 @@ export default function PackBuilder() {
             onChange={(value) => set('interventionTypes', value)}
             hint="One per line, spelled exactly as the report must show them."
           />
-          <ListField
-            label="Colleagues"
-            value={draft.colleagues}
-            onChange={(value) => set('colleagues', value)}
-            hint="One per line: Name, email"
-          />
         </div>
       </Step>
 
@@ -656,13 +644,6 @@ function lines(value: string): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line !== '')
-}
-
-function parsePeople(value: string): Person[] {
-  return lines(value).map((line) => {
-    const [name, email] = line.split(',')
-    return { name: (name ?? '').trim(), email: (email ?? '').trim() }
-  })
 }
 
 function base64ToBytesSafe(base64: string): Uint8Array {

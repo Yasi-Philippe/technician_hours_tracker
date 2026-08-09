@@ -173,11 +173,15 @@ export interface CompanyPack {
     impresa: string
     cliente: string
   }
+  /**
+   * The pick lists. Deliberately no colleagues: who a technician works with is their
+   * own business and changes daily, and shipping a staff list to every phone spreads
+   * personal data further than the job needs. Names are typed once and remembered.
+   */
   lists: {
     projects: string[]
     sections: string[]
     interventionTypes: string[]
-    colleagues: Person[]
   }
   defaults: {
     startMinutes: number

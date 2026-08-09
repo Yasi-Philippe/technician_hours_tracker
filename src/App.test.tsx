@@ -46,7 +46,6 @@ function testPack(templateBase64: string): CompanyPack {
       projects: ['PARCO NORD', 'PARCO SUD'],
       sections: ['A1', 'B2'],
       interventionTypes: ['Conservazione parco', 'Correttivo', 'Preventivo'],
-      colleagues: [{ name: 'Ana Lopez', email: 'ana@example.test' }],
     },
     defaults: { startMinutes: 420, endMinutes: 900, contractualDailyMinutes: 480 },
     emailDomain: '@example.test',
@@ -450,17 +449,27 @@ withTemplate('a configured install', () => {
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
   })
 
-  it('carries a colleague into the entry', async () => {
+  it('offers no colleagues until the technician adds one', async () => {
     const user = userEvent.setup()
     render(<App />)
-
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
-    await user.click(await screen.findByRole('button', { name: 'Ana Lopez' }))
+
+    // The company file supplies no people, so the list starts empty by design.
+    expect(document.querySelectorAll('.chips .chip')).toHaveLength(0)
+    expect(await screen.findByText('Da solo')).toBeTruthy()
+
+    // Typed once…
+    await user.type(await screen.findByPlaceholderText('Aggiungi collega'), 'Luca Bianchi')
+    await user.click(screen.getByRole('button', { name: '+' }))
     await user.click(screen.getByRole('button', { name: 'Salva' }))
 
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
     const [entry] = await db.entries.toArray()
-    expect(entry!.colleagues.map((p) => p.name)).toEqual(['Ana Lopez'])
+    expect(entry!.colleagues.map((p) => p.name)).toEqual(['Luca Bianchi'])
+
+    // …and offered from then on, from the technician's own list.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    expect(await screen.findByRole('button', { name: 'Luca Bianchi' })).toBeTruthy()
   })
 
   it('keeps past descriptions out of the way until they are asked for', async () => {

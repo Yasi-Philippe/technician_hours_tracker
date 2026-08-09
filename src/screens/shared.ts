@@ -92,10 +92,9 @@ export function forgetValue(existing: string[], value: string): string[] {
   return existing.filter((option) => !sameText(option, value))
 }
 
-export function rememberPerson(existing: Person[], person: Person, fromPack: Person[]): Person[] {
+export function rememberPerson(existing: Person[], person: Person): Person[] {
   const name = person.name.trim()
   if (name === '') return existing
-  if (fromPack.some((other) => sameText(other.name, name))) return existing
   if (existing.some((other) => sameText(other.name, name))) return existing
   return [...existing, { name, email: person.email }].slice(-REMEMBER_LIMIT)
 }
@@ -108,11 +107,6 @@ export function forgetPerson(existing: Person[], name: string): Person[] {
 export function mergedOptions(fromPack: string[], custom: string[]): string[] {
   const seen = new Set(fromPack.map((option) => option.trim().toLowerCase()))
   return [...fromPack, ...custom.filter((option) => !seen.has(option.trim().toLowerCase()))]
-}
-
-export function mergedPeople(fromPack: Person[], custom: Person[]): Person[] {
-  const seen = new Set(fromPack.map((person) => person.name.trim().toLowerCase()))
-  return [...fromPack, ...custom.filter((person) => !seen.has(person.name.trim().toLowerCase()))]
 }
 
 /**
@@ -152,7 +146,9 @@ export function entrySetup(pack: CompanyPack | null, settings: Settings): EntryS
       pack?.lists.interventionTypes ?? [],
       settings.customValues.interventionTypes,
     ),
-    colleagues: mergedPeople(pack?.lists.colleagues ?? [], settings.customColleagues).filter(
+    // Only the people this technician has actually worked with; nothing arrives here
+    // from the company file.
+    colleagues: settings.customColleagues.filter(
       (person) => person.name.trim() !== settings.technician.name.trim(),
     ),
     startMinutes: pack?.defaults.startMinutes ?? WITHOUT_PACK.startMinutes,
@@ -181,16 +177,11 @@ export function rememberFromEntry(
   entry: Pick<Entry, 'project' | 'section' | 'interventionType' | 'colleagues'>,
   pack: CompanyPack | null,
 ): Pick<Settings, 'customValues' | 'customColleagues'> {
-  const fromPack = pack?.lists ?? {
-    projects: [],
-    sections: [],
-    interventionTypes: [],
-    colleagues: [],
-  }
+  const fromPack = pack?.lists ?? { projects: [], sections: [], interventionTypes: [] }
 
   let colleagues = settings.customColleagues
   for (const person of entry.colleagues) {
-    colleagues = rememberPerson(colleagues, person, fromPack.colleagues)
+    colleagues = rememberPerson(colleagues, person)
   }
   return {
     customValues: {

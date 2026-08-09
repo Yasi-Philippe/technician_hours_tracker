@@ -58,7 +58,7 @@ const pack = (templateBase64: string): CompanyPack => ({
     emptySectionText: 'N/A',
   },
   constants: { impresa: 'IMPRESA X', cliente: 'CLIENTE Y' },
-  lists: { projects: ['PROGETTO A'], sections: [], interventionTypes: ['Correttivo'], colleagues: [] },
+  lists: { projects: ['PROGETTO A'], sections: [], interventionTypes: ['Correttivo'] },
   defaults: { startMinutes: 420, endMinutes: 900, contractualDailyMinutes: 480 },
   emailDomain: '@example.test',
   fileNamePattern: 'Report_S{week}_{year}_{name}',
