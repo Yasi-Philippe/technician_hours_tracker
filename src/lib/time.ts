@@ -6,6 +6,8 @@
  * to disagree with the total.
  */
 
+import type { TimeRange } from '../types'
+
 export const MINUTES_PER_DAY = 1440
 
 export interface Hours {
@@ -18,20 +20,37 @@ export interface Hours {
 }
 
 /**
- * Split a shift into normal and overtime minutes.
+ * How long one stretch of work lasted.
  *
- * A shift ending before it starts is read as crossing midnight, which is what a night
- * callout looks like. An `override` replaces the computed overtime and is subtracted
- * from the normal hours so the two still add up to the total.
+ * A stretch ending before it starts is read as crossing midnight, which is what a night
+ * callout looks like.
+ */
+export function rangeMinutes(range: TimeRange): number {
+  const raw = range.endMinutes - range.startMinutes
+  return raw < 0 ? raw + MINUTES_PER_DAY : raw
+}
+
+/** Everything worked across a day's stretches. */
+export function totalMinutesOf(segments: readonly TimeRange[]): number {
+  return segments.reduce((sum, range) => sum + rangeMinutes(range), 0)
+}
+
+/**
+ * Split a day into normal and overtime minutes.
+ *
+ * Overtime is judged on the day as a whole, not on each stretch: someone who works
+ * 07:00–15:00 and again 17:00–19:00 has done ten hours, two of them past the
+ * contractual eight. Measuring each stretch on its own would find no overtime at all.
+ *
+ * An `override` replaces the computed overtime and is subtracted from the normal hours
+ * so the two still add up to the total.
  */
 export function computeHours(
-  startMinutes: number,
-  endMinutes: number,
+  segments: readonly TimeRange[],
   contractualDailyMinutes: number,
   override: number | null = null,
 ): Hours {
-  const raw = endMinutes - startMinutes
-  const totalMinutes = raw < 0 ? raw + MINUTES_PER_DAY : raw
+  const totalMinutes = totalMinutesOf(segments)
 
   if (override !== null) {
     const extraMinutes = clamp(override, 0, totalMinutes)

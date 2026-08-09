@@ -320,8 +320,7 @@ function minutesByDate(entries: Entry[], contractual: number): Map<string, Total
   const map = new Map<string, Totals>()
   for (const entry of entries) {
     const hours = computeHours(
-      entry.startMinutes,
-      entry.endMinutes,
+        entry.segments,
       contractual,
       entry.extraMinutesOverride,
     )
@@ -411,8 +410,7 @@ function group(entries: Entry[], key: (entry: Entry) => string, contractual: num
     const name = key(entry).trim()
     if (name === '') continue
     const { totalMinutes } = computeHours(
-      entry.startMinutes,
-      entry.endMinutes,
+        entry.segments,
       contractual,
       entry.extraMinutesOverride,
     )

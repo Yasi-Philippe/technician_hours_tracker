@@ -65,10 +65,7 @@ export default function App() {
   return (
     <div className="app">
       {tab === 'day' ? <DayScreen {...shared} /> : null}
-      {tab === 'week' ? <WeekScreen {...shared} onGoToDay={(d) => {
-        setSelectedDate(d)
-        setTab('day')
-      }} /> : null}
+      {tab === 'week' ? <WeekScreen {...shared} /> : null}
       {tab === 'stats' ? <StatsScreen {...shared} /> : null}
       {tab === 'settings' ? <SettingsScreen {...shared} /> : null}
 

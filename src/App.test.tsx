@@ -214,7 +214,7 @@ withTemplate('removing the company file', () => {
       onboardingComplete: true,
     })
     await db.entries.put({
-      id: 'x', date: '2026-08-03', startMinutes: 420, endMinutes: 900,
+      id: 'x', date: '2026-08-03', segments: [{ startMinutes: 420, endMinutes: 900 }],
       extraMinutesOverride: null, project: 'PARCO NORD', section: 'A1',
       interventionType: 'Correttivo', statusPercent: 100, description: 'x',
       technician: { name: 'Mario Rossi', email: '' }, colleagues: [], createdAt: 1, updatedAt: 1,
@@ -263,8 +263,7 @@ withTemplate('a configured install', () => {
 
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
     const [entry] = await db.entries.toArray()
-    expect(entry!.startMinutes).toBe(420)
-    expect(entry!.endMinutes).toBe(900)
+    expect(entry!.segments).toEqual([{ startMinutes: 420, endMinutes: 900 }])
     expect(entry!.project).toBe('PARCO NORD')
     expect(entry!.technician.name).toBe('Mario Rossi')
     expect(await screen.findByText('07:00 – 15:00')).toBeTruthy()
@@ -287,8 +286,89 @@ withTemplate('a configured install', () => {
     await user.click(screen.getByRole('button', { name: 'Salva' }))
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
     const [entry] = await db.entries.toArray()
-    expect(entry!.endMinutes).toBe(17 * 60 + 30)
+    expect(entry!.segments[0]!.endMinutes).toBe(17 * 60 + 30)
     expect(entry!.extraMinutesOverride).toBeNull()
+  })
+
+  it('records a split day as one report and finds the overtime across it', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    // On site 07:00–15:00 as usual…
+    expect(await screen.findByDisplayValue('07:00')).toBeTruthy()
+
+    // …then called back later the same day.
+    await user.click(screen.getByRole('button', { name: 'Aggiungi un altro orario' }))
+    const clocks = () => screen.getAllByRole('textbox') as HTMLInputElement[]
+
+    const secondStart = document.querySelectorAll('.timebox-value')[2] as HTMLInputElement
+    const secondEnd = document.querySelectorAll('.timebox-value')[3] as HTMLInputElement
+    await user.clear(secondStart)
+    await user.type(secondStart, '17:00')
+    await user.tab()
+    await user.clear(secondEnd)
+    await user.type(secondEnd, '19:00')
+    await user.tab()
+
+    // Ten hours in total, eight normal and two extra — exactly what the day was.
+    expect(await screen.findByText('10h')).toBeTruthy()
+    expect(screen.getByText(/2h ore extra/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    // One report, two stretches.
+    const [entry] = await db.entries.toArray()
+    expect(entry!.segments).toEqual([
+      { startMinutes: 7 * 60, endMinutes: 15 * 60 },
+      { startMinutes: 17 * 60, endMinutes: 19 * 60 },
+    ])
+
+    // Both stretches are shown on the day.
+    expect(await screen.findByText('07:00 – 15:00')).toBeTruthy()
+    expect(screen.getByText('17:00 – 19:00')).toBeTruthy()
+    expect(clocks).toBeTruthy()
+  })
+
+  it('writes a split day to the spreadsheet as one row spanning the whole day', async () => {
+    const { buildReport } = await import('./lib/report')
+    const pack = testPack(templateBase64())
+    const report = buildReport(
+      [
+        {
+          id: 's',
+          date: '2026-08-03',
+          segments: [
+            { startMinutes: 7 * 60, endMinutes: 15 * 60 },
+            { startMinutes: 17 * 60, endMinutes: 19 * 60 },
+          ],
+          extraMinutesOverride: null,
+          project: 'PARCO NORD',
+          section: '',
+          interventionType: 'Correttivo',
+          statusPercent: 100,
+          description: 'Giornata spezzata',
+          technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+          colleagues: [],
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      pack,
+      { anchorDate: '2026-08-03', technicianName: 'Mario Rossi' },
+    )
+
+    const sheet = strFromU8(unzipSync(report.bytes)['xl/worksheets/sheet1.xml']!)
+    // The span is first on site to last off: 07:00 and 19:00.
+    expect(sheet).toMatch(/<c r="M10"[^>]*><v>0\.29166/)
+    expect(sheet).toMatch(/<c r="N10"[^>]*><v>0\.79166/)
+    // But the totals are the hours actually worked: 10 = 8 normal + 2 extra.
+    expect(sheet).toMatch(/<c r="O10"[^>]*><v>0\.41666/)
+    expect(sheet).toMatch(/<c r="P10"[^>]*><v>8<\/v>/)
+    expect(sheet).toMatch(/<c r="Q10"[^>]*><v>2<\/v>/)
+    // Still one row.
+    expect(sheet).not.toMatch(/<c r="A11"[^>]*><v>/)
   })
 
   it('starts in automatic mode and says so', async () => {
@@ -514,8 +594,7 @@ withTemplate('a configured install', () => {
       ['Ripetuta', 'Ripetuta', 'Più vecchia'].map((description, i) => ({
         id: `seed-${i}`,
         date: '2026-08-03',
-        startMinutes: 420,
-        endMinutes: 900,
+        segments: [{ startMinutes: 420, endMinutes: 900 }],
         extraMinutesOverride: null,
         project: 'PARCO NORD',
         section: '',
@@ -608,6 +687,28 @@ withTemplate('a configured install', () => {
     expect((await loadSettings()).customValues.projects).toEqual([])
   })
 
+  it('warns plainly that browser storage can be wiped, in both languages', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Impostazioni/ }))
+
+    const warning = document.querySelector('.notice.is-warning')!
+    expect(warning).toBeTruthy()
+    // Names where the data actually lives, and that it can vanish.
+    expect(warning.textContent).toMatch(/memoria del browser/)
+    expect(warning.textContent).toMatch(/cancellata/)
+    // And the card says how often to take a copy.
+    expect(screen.getByText(/una volta a settimana/)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Español' }))
+    await waitFor(() =>
+      expect(document.querySelector('.notice.is-warning')!.textContent).toMatch(
+        /memoria del navegador/,
+      ),
+    )
+    expect(screen.getByText(/una vez por semana/)).toBeTruthy()
+  })
+
   it('removes a mistyped colleague from settings without touching saved reports', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -674,8 +775,7 @@ withTemplate('a configured install', () => {
       ].map(([date, start, end], i) => ({
         id: `s-${i}`,
         date: date as string,
-        startMinutes: start as number,
-        endMinutes: end as number,
+        segments: [{ startMinutes: start as number, endMinutes: end as number }],
         extraMinutesOverride: null,
         project: 'PARCO NORD',
         section: '',
@@ -721,8 +821,7 @@ withTemplate('a configured install', () => {
     await db.entries.put({
       id: 'hover',
       date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-04`,
-      startMinutes: 420,
-      endMinutes: 1020,
+      segments: [{ startMinutes: 420, endMinutes: 1020 }],
       extraMinutesOverride: null,
       project: 'PARCO NORD',
       section: '',
@@ -763,8 +862,7 @@ withTemplate('a configured install', () => {
     await db.entries.put({
       id: 'tbl',
       date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-04`,
-      startMinutes: 420,
-      endMinutes: 1020,
+      segments: [{ startMinutes: 420, endMinutes: 1020 }],
       extraMinutesOverride: null,
       project: 'PARCO NORD',
       section: '',
@@ -806,8 +904,7 @@ withTemplate('a configured install', () => {
       ].map(([date, start, end], i) => ({
         id: `m-${i}`,
         date: date as string,
-        startMinutes: start as number,
-        endMinutes: end as number,
+        segments: [{ startMinutes: start as number, endMinutes: end as number }],
         extraMinutesOverride: null,
         project: 'PARCO NORD',
         section: '',
@@ -835,9 +932,12 @@ withTemplate('a configured install', () => {
     expect(cells.map((c) => c.querySelector('.month-hours')!.textContent)).toEqual(['8', '10'])
     expect(document.querySelectorAll('.month-cell.has-overtime')).toHaveLength(1)
 
-    // Tapping a day goes to it.
+    // Tapping a day opens it here, without leaving the calendar.
     await user.click(cells[0] as HTMLElement)
     expect(await screen.findByText('07:00 – 15:00')).toBeTruthy()
+    // Still on the calendar: the month grid and its toggle are on screen.
+    expect(document.querySelector('.month-grid')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Mese' })).toBeTruthy()
   })
 
   it('marks weekends and Italian holidays as non-working, but not Spanish ones', async () => {
@@ -878,13 +978,36 @@ withTemplate('a configured install', () => {
     expect(notices.filter((n) => n.classList.contains('is-closed-day'))).toHaveLength(1)
   })
 
+  it('opens a day in place and lets it be edited without leaving the calendar', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+
+    // Week mode: tap a day row.
+    const rows = document.querySelectorAll('.dayrow-open')
+    await user.click(rows[0] as HTMLElement)
+
+    // The day opens below, headed by its date, with the week list still above it.
+    expect(document.querySelector('.daypanel')).toBeTruthy()
+    expect(document.querySelectorAll('.dayrow').length).toBe(7)
+
+    // And it is fully editable from here.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    expect(document.querySelector('.month-grid, .dayrow')).toBeTruthy()
+
+    // Closing puts it away without navigating anywhere.
+    await user.click(screen.getByRole('button', { name: 'Chiudi il giorno' }))
+    expect(document.querySelector('.daypanel')).toBeNull()
+  })
+
   it('jumps to any month of any year in two taps', async () => {
     const user = userEvent.setup()
     await db.entries.put({
       id: 'old',
       date: '2025-03-11',
-      startMinutes: 420,
-      endMinutes: 900,
+      segments: [{ startMinutes: 420, endMinutes: 900 }],
       extraMinutesOverride: null,
       project: 'PARCO NORD',
       section: '',

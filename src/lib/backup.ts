@@ -84,11 +84,20 @@ function parseEntry(value: unknown): Entry | null {
     typeof v === 'number' && Number.isFinite(v) ? v : fallback
   const string = (v: unknown) => (typeof v === 'string' ? v : '')
 
+  // Backups written before hours became a list carry a single start and end.
+  const segments = Array.isArray(raw.segments)
+    ? raw.segments
+        .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
+        .map((v) => ({
+          startMinutes: number(v.startMinutes, 0),
+          endMinutes: number(v.endMinutes, 0),
+        }))
+    : [{ startMinutes: number(raw.startMinutes, 0), endMinutes: number(raw.endMinutes, 0) }]
+
   return {
     id: raw.id,
     date: raw.date,
-    startMinutes: number(raw.startMinutes, 0),
-    endMinutes: number(raw.endMinutes, 0),
+    segments: segments.length > 0 ? segments : [{ startMinutes: 0, endMinutes: 0 }],
     extraMinutesOverride:
       typeof raw.extraMinutesOverride === 'number' ? raw.extraMinutesOverride : null,
     project: string(raw.project),

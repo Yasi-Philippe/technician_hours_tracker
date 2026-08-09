@@ -63,11 +63,14 @@ function buildRow(entry: Entry, pack: CompanyPack): Row {
   const { columns, percentScale, uppercaseMonth, emptySectionText } = pack.sheet
   const date = fromISODate(entry.date)
   const hours = computeHours(
-    entry.startMinutes,
-    entry.endMinutes,
+    entry.segments,
     pack.defaults.contractualDailyMinutes,
     entry.extraMinutesOverride,
   )
+  // With a split day the sheet shows the span — first on site to last off — while the
+  // total stays the hours actually worked. That is how a break has always read here.
+  const firstStart = Math.min(...entry.segments.map((r) => r.startMinutes))
+  const lastEnd = Math.max(...entry.segments.map((r) => r.endMinutes))
 
   const cells: Row = []
   const put = (key: keyof typeof columns, cell: Cell) => {
@@ -90,8 +93,8 @@ function buildRow(entry: Entry, pack: CompanyPack): Row {
   put('technicianName', text(crew.map((person) => person.name).join(TECHNICIAN_SEPARATOR)))
   // The e-mail column identifies who filed the report, so it stays the author's alone.
   put('technicianEmail', text(entry.technician.email))
-  put('startTime', durationCell(entry.startMinutes, pack.sheet.timeFormat))
-  put('endTime', durationCell(entry.endMinutes, pack.sheet.timeFormat))
+  put('startTime', durationCell(firstStart, pack.sheet.timeFormat))
+  put('endTime', durationCell(lastEnd, pack.sheet.timeFormat))
   // Total is every hour worked, normal plus overtime.
   put('totalHours', durationCell(hours.totalMinutes, pack.sheet.totalFormat))
   // Normal hours stop at the contractual day; anything past it lands in overtime.
@@ -127,8 +130,7 @@ export function summarise(entries: Entry[], pack: CompanyPack): ReportSummary {
     days.add(entry.date)
     for (const person of crewOf(entry)) technicians.add(person.name)
     const hours = computeHours(
-      entry.startMinutes,
-      entry.endMinutes,
+      entry.segments,
       pack.defaults.contractualDailyMinutes,
       entry.extraMinutesOverride,
     )

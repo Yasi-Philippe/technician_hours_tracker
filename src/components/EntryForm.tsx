@@ -10,7 +10,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import type { CompanyPack, Entry, Person, Settings } from '../types'
+import type { CompanyPack, Entry, Person, Settings, TimeRange } from '../types'
 import type { Strings } from '../i18n'
 import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
 import { Field, OptionGrid, Sheet, TimeBox } from './ui'
@@ -21,8 +21,7 @@ const STATUS_CHOICES = [100, 75, 50, 25]
 export interface EntryDraft {
   id: string | null
   date: string
-  startMinutes: number
-  endMinutes: number
+  segments: TimeRange[]
   extraMinutesOverride: number | null
   project: string
   section: string
@@ -57,8 +56,7 @@ export function EntryForm({
   const setup = useMemo(() => entrySetup(pack, settings), [pack, settings])
 
   const hours = computeHours(
-    draft.startMinutes,
-    draft.endMinutes,
+    draft.segments,
     setup.contractualDailyMinutes,
     draft.extraMinutesOverride,
   )
@@ -89,18 +87,7 @@ export function EntryForm({
         </div>
       }
     >
-      <div className="timerow">
-        <TimeBox
-          label={t.from}
-          minutes={draft.startMinutes}
-          onChange={(startMinutes) => setDraft({ ...draft, startMinutes })}
-        />
-        <TimeBox
-          label={t.to}
-          minutes={draft.endMinutes}
-          onChange={(endMinutes) => setDraft({ ...draft, endMinutes })}
-        />
-      </div>
+      <Segments draft={draft} setDraft={setDraft} t={t} />
 
       <div className={`hours-readout${hours.extraMinutes > 0 ? ' has-overtime' : ''}`}>
         <span className="hours-readout-main">{formatDuration(hours.totalMinutes)}</span>
@@ -182,6 +169,86 @@ export function EntryForm({
         onChange={(colleagues) => setDraft({ ...draft, colleagues })}
       />
     </Sheet>
+  )
+}
+
+/**
+ * The stretches of work that make up the day.
+ *
+ * Most days are one stretch and look exactly as they always did — one row of two clocks,
+ * no extra controls. A second stretch appears only when asked for, because a split day
+ * is the exception and the common case must not pay for it.
+ *
+ * The alternative, two separate reports, would have been wrong arithmetic rather than
+ * just more taps: overtime is judged per report, so 07:00–15:00 plus 17:00–19:00 would
+ * have come out as ten hours with none of them extra.
+ */
+function Segments({
+  draft,
+  setDraft,
+  t,
+}: {
+  draft: EntryDraft
+  setDraft: (next: EntryDraft) => void
+  t: Strings
+}) {
+  const update = (index: number, patch: Partial<TimeRange>) =>
+    setDraft({
+      ...draft,
+      segments: draft.segments.map((range, i) => (i === index ? { ...range, ...patch } : range)),
+    })
+
+  const addSegment = () => {
+    const last = draft.segments[draft.segments.length - 1]!
+    // Start the new stretch an hour after the previous one ended: a callout follows a
+    // gap, so an hour is a better first guess than repeating the same times.
+    const start = (last.endMinutes + 60) % 1440
+    setDraft({
+      ...draft,
+      segments: [...draft.segments, { startMinutes: start, endMinutes: (start + 120) % 1440 }],
+    })
+  }
+
+  const removeSegment = (index: number) =>
+    setDraft({ ...draft, segments: draft.segments.filter((_, i) => i !== index) })
+
+  return (
+    <div>
+      {draft.segments.map((range, index) => (
+        <div key={index} style={{ marginTop: index === 0 ? 0 : 12 }}>
+          {draft.segments.length > 1 ? (
+            <div className="segment-head">
+              <span className="segment-label">
+                {t.segment} {index + 1}
+              </span>
+              <button
+                type="button"
+                className="segment-remove"
+                onClick={() => removeSegment(index)}
+              >
+                {t.removeSegment}
+              </button>
+            </div>
+          ) : null}
+          <div className="timerow">
+            <TimeBox
+              label={t.from}
+              minutes={range.startMinutes}
+              onChange={(startMinutes) => update(index, { startMinutes })}
+            />
+            <TimeBox
+              label={t.to}
+              minutes={range.endMinutes}
+              onChange={(endMinutes) => update(index, { endMinutes })}
+            />
+          </div>
+        </div>
+      ))}
+
+      <button type="button" className="btn btn-ghost" style={{ marginTop: 10 }} onClick={addSegment}>
+        {t.addSegment}
+      </button>
+    </div>
   )
 }
 

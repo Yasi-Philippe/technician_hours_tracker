@@ -14,6 +14,8 @@ import { Empty, HoursSummary } from '../components/ui'
 import { ExportSheet } from '../components/ExportSheet'
 import { PackRequired } from '../components/PackRequired'
 import { MonthGrid, type DayTotals } from '../components/MonthGrid'
+import { DayEntries } from '../components/DayEntries'
+import { HolidayNotice } from './DayScreen'
 import { MonthPicker } from '../components/MonthPicker'
 import { computeHours, formatDuration } from '../lib/time'
 import { isNonWorkingDay } from '../lib/holidays'
@@ -23,6 +25,7 @@ import {
   endOfMonthISO,
   formatDayNumber,
   formatDayShort,
+  formatLongDate,
   formatMonthYear,
   isoWeek,
   startOfMonthISO,
@@ -38,9 +41,12 @@ export default function WeekScreen({
   t,
   selectedDate,
   onSelectDate,
+  onUpdateSettings,
   onToast,
-  onGoToDay,
-}: ScreenProps & { onGoToDay: (date: string) => void }) {
+}: ScreenProps) {
+  // Which day is open below the calendar. Selecting a date used to switch tabs, which
+  // threw away the month the technician was looking at.
+  const [openDay, setOpenDay] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [needsPack, setNeedsPack] = useState(false)
   const [mode, setMode] = useState<Mode>('week')
@@ -76,8 +82,7 @@ export default function WeekScreen({
     const map = new Map<string, DayTotals>()
     for (const entry of monthEntries) {
       const hours = computeHours(
-        entry.startMinutes,
-        entry.endMinutes,
+        entry.segments,
         contractual,
         entry.extraMinutesOverride,
       )
@@ -110,7 +115,8 @@ export default function WeekScreen({
       list.push(entry)
       map.set(entry.date, list)
     }
-    for (const list of map.values()) list.sort((a, b) => a.startMinutes - b.startMinutes)
+    for (const list of map.values())
+      list.sort((a, b) => (a.segments[0]?.startMinutes ?? 0) - (b.segments[0]?.startMinutes ?? 0))
     return map
   }, [entries])
 
@@ -119,8 +125,7 @@ export default function WeekScreen({
     let extra = 0
     for (const entry of entries) {
       const hours = computeHours(
-        entry.startMinutes,
-        entry.endMinutes,
+        entry.segments,
         contractual,
         entry.extraMinutesOverride,
       )
@@ -130,10 +135,18 @@ export default function WeekScreen({
     return { total, extra, days: byDay.size }
   }, [entries, contractual, byDay])
 
-  const step = (delta: number) =>
+  const step = (delta: number) => {
+    setOpenDay(null)
     onSelectDate(
       mode === 'week' ? addDaysISO(selectedDate, delta * 7) : addMonthsISO(selectedDate, delta),
     )
+  }
+
+  /** Open a day here rather than sending the technician to another screen. */
+  const openDate = (date: string) => {
+    onSelectDate(date)
+    setOpenDay(date)
+  }
 
   return (
     <div className="screen">
@@ -142,7 +155,7 @@ export default function WeekScreen({
           type="button"
           className="topbar-action"
           onClick={() => step(-1)}
-          aria-label={mode === 'week' ? t.previousWeek : t.month}
+          aria-label={mode === 'week' ? t.previousWeek : t.previousMonth}
         >
           ‹
         </button>
@@ -165,7 +178,7 @@ export default function WeekScreen({
           type="button"
           className="topbar-action"
           onClick={() => step(1)}
-          aria-label={mode === 'week' ? t.nextWeek : t.month}
+          aria-label={mode === 'week' ? t.nextWeek : t.nextMonth}
         >
           ›
         </button>
@@ -215,7 +228,7 @@ export default function WeekScreen({
               selected={selectedDate}
               totalsByDate={totalsByDate}
               weekdayLabels={days.map((date) => formatDayShort(date, settings.language))}
-              onSelect={onGoToDay}
+              onSelect={openDate}
             />
 
             {monthTotals.days === 0 ? <p className="hint">{t.nothingThisMonth}</p> : null}
@@ -251,7 +264,7 @@ export default function WeekScreen({
               extraLabel={t.extraShort}
               moreLabel={t.showMore}
               lessLabel={t.showLess}
-              onOpen={() => onGoToDay(date)}
+              onOpen={() => openDate(date)}
             />
           ))}
         </div>
@@ -275,6 +288,29 @@ export default function WeekScreen({
         </>
         )}
       </div>
+
+      {openDay ? (
+        <div className="screen-pad" style={{ paddingTop: 0 }}>
+          <div className="daypanel">
+            <div className="daypanel-head">
+              <p className="daypanel-date">{formatLongDate(openDay, settings.language)}</p>
+              <button type="button" className="daypanel-close" onClick={() => setOpenDay(null)}>
+                {t.closeDay}
+              </button>
+            </div>
+            <HolidayNotice date={openDay} t={t} />
+            <DayEntries
+              date={openDay}
+              settings={settings}
+              pack={pack}
+              t={t}
+              onUpdateSettings={onUpdateSettings}
+              onToast={onToast}
+              compact
+            />
+          </div>
+        </div>
+      ) : null}
 
       {jumping ? (
         <MonthPicker
@@ -339,8 +375,7 @@ function DayRow({
   let extra = 0
   for (const entry of entries) {
     const hours = computeHours(
-      entry.startMinutes,
-      entry.endMinutes,
+        entry.segments,
       contractual,
       entry.extraMinutesOverride,
     )

@@ -59,6 +59,9 @@ const it = {
   noEntriesToday: 'Nessun rapporto per questo giorno',
   noEntriesTodayHint: 'Tocca Aggiungi per registrare le ore.',
 
+  segment: 'Orario',
+  addSegment: 'Aggiungi un altro orario',
+  removeSegment: 'Togli',
   from: 'Dalle',
   to: 'Alle',
   totalHours: 'Ore totali',
@@ -100,10 +103,13 @@ const it = {
   weekTotal: 'Totale settimana',
   previousWeek: 'Settimana precedente',
   nextWeek: 'Settimana successiva',
+  previousMonth: 'Mese precedente',
+  nextMonth: 'Mese successivo',
   thisWeek: 'Questa settimana',
   modeWeek: 'Settimana',
   modeMonth: 'Mese',
   jumpTo: 'Vai a…',
+  closeDay: 'Chiudi il giorno',
   year: 'Anno',
   month: 'Mese',
   monthTotalHours: 'Ore del mese',
@@ -150,13 +156,16 @@ const it = {
 
   // Backup
   backupTitle: 'Copia di sicurezza',
+  backupWarning:
+    'I tuoi rapporti stanno solo dentro questo telefono, nella memoria del browser. Quella memoria può essere cancellata in qualsiasi momento: dal telefono quando resta senza spazio, da un’app che “pulisce”, o se cancelli i dati di navigazione. Se succede, i rapporti spariscono e non si recuperano.',
   backupBody:
-    'Salva tutti i tuoi dati in un file. Serve come copia di sicurezza e per passare a un altro telefono.',
+    'Per questo salva una copia spesso: una volta a settimana. Lo stesso file serve anche per passare a un altro telefono.',
   backupExport: 'Salva una copia',
   backupImport: 'Carica una copia',
   backupNever: 'Mai fatta',
   backupLast: 'Ultima copia',
-  backupReminder: 'Non fai una copia da un po’. Falla adesso, ci vuole un secondo.',
+  backupReminder:
+    'È passata più di una settimana dall’ultima copia. Falla adesso, ci vuole un secondo.',
   importedEntries: 'rapporti importati',
   importedUpdated: 'aggiornati',
   importedSkipped: 'già presenti',
@@ -246,6 +255,9 @@ const es: Strings = {
   noEntriesToday: 'No hay partes para este día',
   noEntriesTodayHint: 'Toca Añadir para registrar las horas.',
 
+  segment: 'Horario',
+  addSegment: 'Añadir otro horario',
+  removeSegment: 'Quitar',
   from: 'Desde',
   to: 'Hasta',
   totalHours: 'Horas totales',
@@ -286,10 +298,13 @@ const es: Strings = {
   weekTotal: 'Total de la semana',
   previousWeek: 'Semana anterior',
   nextWeek: 'Semana siguiente',
+  previousMonth: 'Mes anterior',
+  nextMonth: 'Mes siguiente',
   thisWeek: 'Esta semana',
   modeWeek: 'Semana',
   modeMonth: 'Mes',
   jumpTo: 'Ir a…',
+  closeDay: 'Cerrar el día',
   year: 'Año',
   month: 'Mes',
   monthTotalHours: 'Horas del mes',
@@ -333,13 +348,16 @@ const es: Strings = {
   exportNeedsPack: 'Hace falta el archivo de la empresa para crear el parte',
 
   backupTitle: 'Copia de seguridad',
+  backupWarning:
+    'Tus partes están solo dentro de este teléfono, en la memoria del navegador. Esa memoria puede borrarse en cualquier momento: por el teléfono cuando se queda sin espacio, por una aplicación que “limpia”, o si borras los datos de navegación. Si pasa, los partes desaparecen y no se recuperan.',
   backupBody:
-    'Guarda todos tus datos en un archivo. Sirve como copia de seguridad y para pasar a otro teléfono.',
+    'Por eso guarda una copia a menudo: una vez por semana. El mismo archivo sirve también para pasar a otro teléfono.',
   backupExport: 'Guardar una copia',
   backupImport: 'Cargar una copia',
   backupNever: 'Nunca',
   backupLast: 'Última copia',
-  backupReminder: 'Hace tiempo que no haces una copia. Hazla ahora, es un segundo.',
+  backupReminder:
+    'Ha pasado más de una semana desde la última copia. Hazla ahora, es un segundo.',
   importedEntries: 'partes importados',
   importedUpdated: 'actualizados',
   importedSkipped: 'ya estaban',

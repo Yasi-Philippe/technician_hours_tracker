@@ -8,8 +8,7 @@ import { bytesToBase64 } from './base64'
 const entry = (over: Partial<Entry> = {}): Entry => ({
   id: over.id ?? 'e1',
   date: '2026-08-03',
-  startMinutes: 7 * 60,
-  endMinutes: 15 * 60,
+  segments: [{ startMinutes: 7 * 60, endMinutes: 15 * 60 }],
   extraMinutesOverride: null,
   project: 'PROGETTO A',
   section: '',
@@ -118,7 +117,7 @@ describe('summary', () => {
   it('counts each intervention once and never multiplies the hours by the crew', () => {
     const rows = reportRows([
       entry({ id: 'a', date: '2026-08-03', colleagues: [{ name: 'Ana', email: '' }] }),
-      entry({ id: 'b', date: '2026-08-04', startMinutes: 420, endMinutes: 1020 }),
+      entry({ id: 'b', date: '2026-08-04', segments: [{ startMinutes: 420, endMinutes: 1020 }] }),
     ])
     const s = summarise(rows, pack(''))
     expect(s.entryCount).toBe(2)
@@ -176,8 +175,7 @@ withTemplate('building a report against a real template', () => {
         entry({
           id: 'a',
           date: '2026-08-03',
-          startMinutes: 7 * 60,
-          endMinutes: 17 * 60,
+          segments: [{ startMinutes: 7 * 60, endMinutes: 17 * 60 }],
           colleagues: [{ name: 'Ana Lopez', email: 'ana@example.test' }],
         }),
       ],
@@ -212,7 +210,7 @@ withTemplate('building a report against a real template', () => {
       [8 * 60 + 30, 11 * 60, '2.5', null],
       [5 * 60, 20 * 60, '8', '7'],
     ] as const) {
-      const report = buildReport([entry({ startMinutes: start, endMinutes: end })], packed(), {
+      const report = buildReport([entry({ segments: [{ startMinutes: start, endMinutes: end }] })], packed(), {
         anchorDate: '2026-08-03',
         technicianName: 'Mario Rossi',
       })
@@ -231,7 +229,7 @@ withTemplate('building a report against a real template', () => {
   })
 
   it('keeps the total equal to normal plus overtime', () => {
-    const report = buildReport([entry({ startMinutes: 5 * 60, endMinutes: 20 * 60 })], packed(), {
+    const report = buildReport([entry({ segments: [{ startMinutes: 5 * 60, endMinutes: 20 * 60 }] })], packed(), {
       anchorDate: '2026-08-03',
       technicianName: 'Mario Rossi',
     })

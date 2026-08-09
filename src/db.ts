@@ -22,6 +22,32 @@ class AppDatabase extends Dexie {
       settings: 'id',
       packs: 'id',
     })
+
+    // v2: an entry's hours became a list of stretches rather than one start and end,
+    // so a split day can be totalled as a whole. Entries already on the device are
+    // rewritten in place — nobody loses a report to a schema change.
+    this.version(2)
+      .stores({
+        entries: 'id, date, updatedAt',
+        settings: 'id',
+        packs: 'id',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('entries')
+          .toCollection()
+          .modify((entry: Record<string, unknown>) => {
+            if (Array.isArray(entry.segments)) return
+            entry.segments = [
+              {
+                startMinutes: typeof entry.startMinutes === 'number' ? entry.startMinutes : 0,
+                endMinutes: typeof entry.endMinutes === 'number' ? entry.endMinutes : 0,
+              },
+            ]
+            delete entry.startMinutes
+            delete entry.endMinutes
+          }),
+      )
   }
 }
 

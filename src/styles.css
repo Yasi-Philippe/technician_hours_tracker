@@ -1795,6 +1795,13 @@ textarea.input {
   margin-top: 8px;
 }
 
+.notice.is-warning {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-dark);
+  line-height: 1.5;
+}
+
 .notice.is-closed-day {
   border-color: var(--accent-line);
   background: var(--accent-wash);
@@ -1809,4 +1816,93 @@ textarea.input {
   text-transform: uppercase;
   opacity: 0.75;
   margin-bottom: 2px;
+}
+
+/* ------------------------------------------------------------- day panel */
+
+/*
+ * A day opened from the calendar, in place. Set apart from the grid above it so it
+ * reads as a drawer rather than more calendar, and headed by the date so there is never
+ * a question about which day is being edited.
+ */
+.daypanel {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  padding: var(--pad);
+  margin-top: 14px;
+  box-shadow: var(--shadow-raised);
+}
+
+.daypanel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.daypanel-date {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.daypanel-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 44px;
+  padding: 0 0 0 8px;
+}
+
+/* ------------------------------------------------------------- segments */
+
+/*
+ * A split day: on site, away, back again. The header only appears from the second
+ * stretch onward, so an ordinary day shows one row of clocks and nothing else.
+ */
+.segment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.segment-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.segment-remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 0 4px;
+}
+
+/* Several stretches stack under one another on the entry card. */
+.entry-range {
+  display: block;
+}
+
+.entry-range + .entry-range {
+  margin-top: 2px;
 }

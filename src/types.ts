@@ -13,6 +13,12 @@ export interface Person {
   email: string
 }
 
+/** A stretch of work: minutes since local midnight, end after start. */
+export interface TimeRange {
+  startMinutes: number
+  endMinutes: number
+}
+
 /**
  * One intervention, on one day, by one technician.
  *
@@ -24,11 +30,18 @@ export interface Entry {
   id: string
   /** Local calendar date, `YYYY-MM-DD`. Never a timestamp: a work day is not an instant. */
   date: string
-  /** Minutes since local midnight. */
-  startMinutes: number
-  endMinutes: number
   /**
-   * Overtime is normally derived from start and end. This holds a manual figure for
+   * One or more stretches of work, in order.
+   *
+   * A day is often split — on site 07:00–15:00, called back 17:00–19:00. Recording that
+   * as two separate reports would compute overtime twice over, once per report, and
+   * neither would exceed the contractual day: ten hours worked would show as none extra.
+   * Keeping the stretches together means the day is totalled once, and the two hours
+   * past eight are correctly overtime.
+   */
+  segments: TimeRange[]
+  /**
+   * Overtime is normally derived from the segments. This holds a manual figure for
    * the days reality does not cooperate; `null` means "calculate it".
    */
   extraMinutesOverride: number | null
