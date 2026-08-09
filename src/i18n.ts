@@ -180,14 +180,16 @@ const it = {
   companyFileNone: 'Nessun file caricato',
   replaceCompanyFile: 'Sostituisci il file aziendale',
   removeCompanyFile: 'Rimuovi il file aziendale',
-  removeCompanyFileConfirm: 'Rimuovere il file aziendale? I tuoi rapporti restano.',
+  removeCompanyFileConfirm:
+    'Rimuovere il file aziendale? Spariscono anche i progetti, le sezioni e i colleghi che arrivavano da lì. I tuoi rapporti restano.',
   storage: 'Spazio',
   storagePersisted: 'I dati sono protetti su questo dispositivo',
   storageNotPersisted: 'Installa l’app per proteggere meglio i dati',
   installApp: 'Installa l’app',
   dangerZone: 'Attenzione',
   deleteAll: 'Cancella tutti i dati',
-  deleteAllConfirm: 'Cancellare tutti i rapporti? Non si può tornare indietro.',
+  deleteAllConfirm:
+    'Cancellare tutto? Spariscono i rapporti, il tuo nome e il file aziendale. Non si può tornare indietro.',
   deleteAllDone: 'Dati cancellati',
 
   // Errors
@@ -360,14 +362,16 @@ const es: Strings = {
   companyFileNone: 'No hay ningún archivo cargado',
   replaceCompanyFile: 'Sustituir el archivo de la empresa',
   removeCompanyFile: 'Quitar el archivo de la empresa',
-  removeCompanyFileConfirm: '¿Quitar el archivo de la empresa? Tus partes se mantienen.',
+  removeCompanyFileConfirm:
+    '¿Quitar el archivo de la empresa? También desaparecen los proyectos, las secciones y los compañeros que venían de ahí. Tus partes se mantienen.',
   storage: 'Almacenamiento',
   storagePersisted: 'Los datos están protegidos en este dispositivo',
   storageNotPersisted: 'Instala la aplicación para proteger mejor los datos',
   installApp: 'Instalar la aplicación',
   dangerZone: 'Atención',
   deleteAll: 'Borrar todos los datos',
-  deleteAllConfirm: '¿Borrar todos los partes? No se puede deshacer.',
+  deleteAllConfirm:
+    '¿Borrarlo todo? Desaparecen los partes, tu nombre y el archivo de la empresa. No se puede deshacer.',
   deleteAllDone: 'Datos borrados',
 
   errorTitle: 'Algo no ha funcionado',

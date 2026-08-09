@@ -90,8 +90,64 @@ export async function savePack(pack: CompanyPack): Promise<void> {
   await db.packs.put({ ...pack, id: 'pack' })
 }
 
+/**
+ * Remove the company file and everything it put into the technician's settings.
+ *
+ * Deleting the pack record alone is not enough, and that gap was visible: the last-used
+ * project and section are stored in settings, so after removing the company file the
+ * entry form still defaulted to a company project and still offered it as a choice. To
+ * the technician it looked as though the app had those names built in.
+ *
+ * The pack is read before it is deleted, so its own values can be told apart from ones
+ * the technician typed. Anything that came from the company goes; personal additions
+ * stay.
+ */
 export async function clearPack(): Promise<void> {
+  const pack = await db.packs.get('pack')
   await db.packs.delete('pack')
+  if (!pack) return
+
+  const settings = await loadSettings()
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+  const fromPack = (value: string, list: string[]) => list.some((item) => same(item, value))
+
+  await saveSettings({
+    ...settings,
+    // Conveniences, but they hold company values verbatim.
+    lastProject: '',
+    lastSection: '',
+    lastInterventionType: '',
+    // A value can end up here if an entry was saved after the pack was removed, so
+    // scrub anything the pack also supplied.
+    customValues: {
+      projects: settings.customValues.projects.filter(
+        (v) => !fromPack(v, pack.lists.projects),
+      ),
+      sections: settings.customValues.sections.filter(
+        (v) => !fromPack(v, pack.lists.sections),
+      ),
+      interventionTypes: settings.customValues.interventionTypes.filter(
+        (v) => !fromPack(v, pack.lists.interventionTypes),
+      ),
+    },
+    customColleagues: settings.customColleagues.filter(
+      (person) => !pack.lists.colleagues.some((other) => same(other.name, person.name)),
+    ),
+  })
+}
+
+/**
+ * A genuine factory reset: entries, settings and the company file.
+ *
+ * "Delete all data" previously removed only the entries, leaving the company file and
+ * the technician's name in place — a button that did not do what it said.
+ */
+export async function resetEverything(): Promise<void> {
+  await db.transaction('rw', db.entries, db.settings, db.packs, async () => {
+    await db.entries.clear()
+    await db.settings.clear()
+    await db.packs.clear()
+  })
 }
 
 export async function entriesForWeek(anchor: string): Promise<Entry[]> {

@@ -13,7 +13,7 @@ import { customCounts, forgetPerson, forgetValue } from './shared'
 import { LANGUAGE_NAMES } from '../i18n'
 import { Card, Credit, Field, downloadBlob } from '../components/ui'
 import { PackLoader } from '../components/PackLoader'
-import { clearPack, db, requestPersistentStorage } from '../db'
+import { clearPack, requestPersistentStorage, resetEverything } from '../db'
 import {
   BackupError,
   backupFileName,
@@ -84,7 +84,7 @@ export default function SettingsScreen({
 
   const deleteEverything = async () => {
     if (!window.confirm(t.deleteAllConfirm)) return
-    await db.entries.clear()
+    await resetEverything()
     onToast({ message: t.deleteAllDone })
   }
 

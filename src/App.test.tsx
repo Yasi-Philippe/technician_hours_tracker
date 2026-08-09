@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event'
 import { unzipSync, strFromU8 } from 'fflate'
 import { lazy, templateBytes, withTemplate } from './testing/template'
 import App from './App'
-import { db, loadSettings, savePack, saveSettings, defaultSettings } from './db'
+import { clearPack, db, loadSettings, resetEverything, savePack, saveSettings, defaultSettings } from './db'
 import { bytesToBase64 } from './lib/base64'
 import type { CompanyPack } from './types'
 
@@ -161,6 +161,76 @@ describe('a blank install', () => {
 
 // Deferred: a skipped suite still runs its body, and the template is absent in CI.
 const templateBase64 = lazy(() => bytesToBase64(templateBytes()))
+
+withTemplate('removing the company file', () => {
+  beforeEach(async () => {
+    await savePack(testPack(templateBase64()))
+    await saveSettings({
+      ...defaultSettings(),
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      onboardingComplete: true,
+    })
+  })
+
+  it('leaves nothing from the company file behind', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    // Work a normal day, so the pack's values get remembered as "last used".
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'A1' }))
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+
+    const before = await loadSettings()
+    expect(before.lastProject).toBe('PARCO NORD')
+    expect(before.lastSection).toBe('A1')
+
+    // Now remove the company file.
+    await clearPack()
+
+    const after = await loadSettings()
+    const leftovers = [
+      after.lastProject,
+      after.lastSection,
+      after.lastInterventionType,
+      ...after.customValues.projects,
+      ...after.customValues.sections,
+      ...after.customValues.interventionTypes,
+      ...after.customColleagues.map((p) => p.name),
+    ]
+    // Nothing the company file supplied may survive its removal.
+    expect(leftovers).not.toContain('PARCO NORD')
+    expect(leftovers).not.toContain('A1')
+    expect(leftovers).not.toContain('Ana Lopez')
+  })
+
+  it('really deletes everything when asked to', async () => {
+    await savePack(testPack(templateBase64()))
+    await saveSettings({
+      ...defaultSettings(),
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      lastProject: 'PARCO NORD',
+      lastSection: 'A1',
+      onboardingComplete: true,
+    })
+    await db.entries.put({
+      id: 'x', date: '2026-08-03', startMinutes: 420, endMinutes: 900,
+      extraMinutesOverride: null, project: 'PARCO NORD', section: 'A1',
+      interventionType: 'Correttivo', statusPercent: 100, description: 'x',
+      technician: { name: 'Mario Rossi', email: '' }, colleagues: [], createdAt: 1, updatedAt: 1,
+    })
+
+    await resetEverything()
+
+    expect(await db.entries.count()).toBe(0)
+    expect(await db.packs.count()).toBe(0)
+    const settings = await loadSettings()
+    expect(settings.lastProject).toBe('')
+    expect(settings.lastSection).toBe('')
+    expect(settings.technician.name).toBe('')
+  })
+})
 
 withTemplate('a configured install', () => {
   beforeEach(async () => {
