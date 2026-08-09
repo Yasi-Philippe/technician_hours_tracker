@@ -541,17 +541,32 @@ select {
 
 /* ---------------------------------------------------------------- fields */
 
+/*
+ * Fields are separated by a rule, not by more air.
+ *
+ * With choices flowing as chips, one field ran straight into the next and the form read
+ * as a single field of buttons — you had to stop and work out where "Progetto" ended and
+ * "Sezione" began. The 22px that already sat between fields is simply split either side
+ * of a hairline, so the rhythm of the form is unchanged and only the boundary is new.
+ */
 .field + .field {
-  margin-top: 22px;
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
 }
 
+/*
+ * The label is the heading of its section, so it carries heading weight. It was set in
+ * the muted grey used for secondary text, which is why it did not register as a divider
+ * between one group of chips and the next.
+ */
 .field-label {
   display: block;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--ink-strong);
   margin-bottom: 8px;
 }
 
@@ -663,16 +678,25 @@ textarea.input {
   background: var(--line);
 }
 
+/*
+ * The hours the clocks add up to, and how they are counted. One block, directly under
+ * the times it describes — the overtime mode is a qualifier on this number, not a step
+ * of its own, and it used to sit mid-form as a full card carrying far more weight than
+ * it earns.
+ */
 .hours-readout {
   margin-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   padding: 12px 14px;
   border-radius: var(--radius);
   background: var(--paper-sunk);
   border: 1px solid var(--line);
+}
+
+.hours-readout-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .hours-readout.has-overtime {
@@ -698,9 +722,47 @@ textarea.input {
 
 /* --------------------------------------------------------------- options */
 
+/*
+ * Choices flow and size themselves to their text.
+ *
+ * A fixed column count meant the longest label decided the layout for everything: add
+ * one wordy value to a list of short codes and all of them dropped to one per line.
+ * Here "PB07" takes the room "PB07" needs and many fit on a row, while a long project
+ * name simply takes the width it needs — the two can share a list without either
+ * being ruined.
+ *
+ * Chips do not grow to fill the row: stretching six of them across the screen is what
+ * made them look like buttons rather than a compact set.
+ */
 .options {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.options .option {
+  flex: 0 0 auto;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 16px;
+  max-width: 100%;
+}
+
+/* Where equal widths are wanted — a two-way toggle, a row of percentages. */
+.options.cols-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.options.cols-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.options.cols-2 .option,
+.options.cols-4 .option {
+  flex: initial;
+  padding: 10px 4px;
 }
 
 /*
@@ -719,31 +781,7 @@ textarea.input {
 }
 
 .option-more,
-.chip-more {
-  appearance: none;
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  border-radius: var(--radius);
-  width: 44px;
-  flex-shrink: 0;
-  font-size: 18px;
-  line-height: 1;
-  color: var(--ink-muted);
-  cursor: pointer;
-}
 
-.option-more:active,
-.chip-more:active {
-  background: var(--paper-sunk);
-}
-
-.options.cols-2 {
-  grid-template-columns: 1fr 1fr;
-}
-
-.options.cols-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
 
 .option {
   appearance: none;
@@ -759,11 +797,6 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.options.cols-4 .option {
-  justify-content: center;
-  padding: 10px 4px;
 }
 
 .option:active {
@@ -1920,16 +1953,75 @@ textarea.input {
   margin-bottom: 16px;
 }
 
-/* Chips carry the same control, sized to sit beside a rounded chip. */
+/*
+ * A chip and its control are one capsule, not two.
+ *
+ * They were separate bordered pills with a gap between them, which read as two unrelated
+ * buttons. The border and the rounding now belong to the wrapper and the two halves are
+ * divided by a hairline, so it looks like one object with a handle.
+ */
 .chip-wrap {
   display: inline-flex;
-  gap: 2px;
+  align-items: stretch;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.chip-wrap .chip {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-right: 12px;
 }
 
 .chip-more {
-  border-radius: 999px;
-  width: 40px;
+  appearance: none;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  width: 34px;
   min-height: 44px;
+  flex-shrink: 0;
+  color: var(--ink-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-more svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 140ms ease;
+}
+
+.chip-more[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.chip-more:active {
+  background: var(--paper-sunk);
+}
+
+/* Selected, the whole capsule fills — handle included. */
+.chip-wrap.is-selected {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.chip-wrap.is-selected .chip {
+  color: #fff;
+}
+
+.chip-wrap.is-selected .chip-more {
+  color: rgb(255 255 255 / 65%);
+  border-left-color: rgb(255 255 255 / 25%);
+}
+
+.chip-wrap.is-selected .chip-more:active {
+  background: rgb(255 255 255 / 12%);
 }
 
 /*
@@ -1950,4 +2042,118 @@ textarea.input {
   color: var(--accent-dark);
   margin-bottom: 10px;
   word-break: break-word;
+}
+
+/* ------------------------------------------------------------ overtime mode */
+
+/*
+ * Named in full on purpose. This block was called `.ot`, which silently also matched the
+ * red legend swatch (`legend-swatch ot`) and the "(1h extra)" text on entry cards — both
+ * inherited its margin, padding and top border, which is why the red square sat lower
+ * than the black one.
+ */
+.overtime {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.overtime-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.overtime-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/*
+ * A small two-way switch. Deliberately below the app's usual touch minimum: it is a
+ * setting touched on the rare split day, not part of filling in a report, and at full
+ * size it dominated the form. The labels stay full words so it is never a guess.
+ */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.segmented-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0 12px;
+  min-height: 38px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.segmented-btn + .segmented-btn {
+  border-left: 1px solid var(--line);
+}
+
+.segmented-btn.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+
+.overtime-stepper {
+  margin-top: 10px;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.overtime-step {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  border-radius: var(--radius);
+  width: 48px;
+  min-height: 40px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.overtime-step:active {
+  background: var(--paper-sunk);
+}
+
+.overtime-value {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: center;
+}
+
+.overtime-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-faint);
+}
+
+.hours-readout.has-overtime .overtime {
+  border-top-color: var(--accent-line);
+}
+
+/*
+ * A sheet whose contents get swapped in place holds one height. Sized from its content
+ * it grew and shrank with each day chosen, and because it is anchored to the bottom
+ * edge the whole panel jumped every time. The body scrolls inside instead.
+ */
+.sheet.is-steady {
+  height: 80dvh;
 }

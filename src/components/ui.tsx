@@ -135,31 +135,11 @@ export interface OptionGridProps {
   onChange: (next: string) => void
   /** Label for the escape hatch that lets someone type a value not on the list. */
   otherLabel?: string
-  /** Omit to let the grid size itself from the length of the labels. */
+  /** Set only where equal-width buttons are wanted; otherwise chips size to their text. */
   columns?: 1 | 2 | 4
   placeholder?: string
-  /** True for values the technician typed themselves, which they may remove. */
-  removable?: (value: string) => boolean
-  onRemove?: (value: string) => void
-  /** Labels for the remove affordance, so this stays free of interface text. */
-  moreLabel?: string
-  removeLabel?: string
-  cancelLabel?: string
-}
-
-/**
- * How many options fit across, judged by the longest label.
- *
- * Short codes like "PB07" waste most of a full-width row and turn a list of thirteen
- * into a long scroll; a wordy label like "Conservazione parco" needs the whole width to
- * stay readable. Deciding from the content means a pack can change its lists without
- * anyone revisiting this.
- */
-function autoColumns(options: string[]): 1 | 2 | 4 {
-  const longest = options.reduce((max, option) => Math.max(max, option.trim().length), 0)
-  if (longest <= 6) return 4
-  if (longest <= 14) return 2
-  return 1
+  /** The rest of the choices, revealed by the escape hatch along with the text field. */
+  moreOptions?: string[]
 }
 
 /**
@@ -175,89 +155,66 @@ export function OptionGrid({
   otherLabel,
   columns,
   placeholder,
-  removable,
-  onRemove,
-  moreLabel = '',
-  removeLabel = '',
-  cancelLabel = '',
+  moreOptions = [],
 }: OptionGridProps) {
-  const [typing, setTyping] = useState(false)
-  const [confirming, setConfirming] = useState<string | null>(null)
-  const known = options.includes(value)
-  const showCustom = typing || (value !== '' && !known)
-  const across = columns ?? autoColumns(options)
+  const [expanded, setExpanded] = useState(false)
+  const known = options.includes(value) || moreOptions.includes(value)
+  const isTyped = value !== '' && !known
+  /*
+   * What the text field holds, kept apart from the chosen value.
+   *
+   * Opening "Altro…" must not drop the current selection — someone may only be looking
+   * for a choice further down the list — but it must not pre-fill the box with it
+   * either, or the first thing typed lands on the end of the old value.
+   */
+  const [custom, setCustom] = useState(() => (isTyped ? value : ''))
+  const showCustom = expanded || isTyped
+  const gridClass = columns ? `options cols-${columns}` : 'options'
+
+  const choice = (option: string) => (
+    <button
+      key={option}
+      type="button"
+      className={`option${value === option ? ' is-selected' : ''}`}
+      onClick={() => {
+        setExpanded(false)
+        setCustom('')
+        onChange(option)
+      }}
+    >
+      {option}
+    </button>
+  )
 
   return (
     <div className="stack">
-      <div className={`options cols-${across}`}>
-        {options.map((option) => {
-          const canRemove = removable?.(option) === true && onRemove !== undefined
-          const button = (
-            <button
-              type="button"
-              className={`option${value === option && !typing ? ' is-selected' : ''}`}
-              onClick={() => {
-                setTyping(false)
-                setConfirming(null)
-                onChange(option)
-              }}
-            >
-              {option}
-            </button>
-          )
-          // A value the technician typed carries its own way out. A button inside a
-          // button is not valid, so the pair share a wrapper instead.
-          return canRemove ? (
-            <span className="option-wrap" key={option}>
-              {button}
-              <button
-                type="button"
-                className="option-more"
-                aria-label={`${moreLabel}: ${option}`}
-                onClick={() => setConfirming(confirming === option ? null : option)}
-              >
-                ⋯
-              </button>
-            </span>
-          ) : (
-            <span className="option-wrap" key={option}>
-              {button}
-            </span>
-          )
-        })}
-        {otherLabel ? (
+      <div className={gridClass}>
+        {options.map(choice)}
+        {otherLabel && (moreOptions.length > 0 || !expanded) ? (
           <button
             type="button"
-            className={`option is-other${showCustom ? ' is-selected' : ''}`}
-            onClick={() => {
-              setTyping(true)
-              if (known) onChange('')
-            }}
+            className={`option is-other${expanded ? ' is-selected' : ''}`}
+            onClick={() => setExpanded(!expanded)}
           >
             {otherLabel}
           </button>
         ) : null}
       </div>
-      {confirming !== null ? (
-        <RemoveConfirm
-          value={confirming}
-          removeLabel={removeLabel}
-          cancelLabel={cancelLabel}
-          onRemove={() => {
-            onRemove?.(confirming)
-            setConfirming(null)
-          }}
-          onCancel={() => setConfirming(null)}
-        />
-      ) : null}
 
+      {/* The rest of the choices, plus somewhere to type one that is not listed. */}
+      {expanded && moreOptions.length > 0 ? (
+        <div className={gridClass}>{moreOptions.map(choice)}</div>
+      ) : null}
       {showCustom ? (
         <input
           className="input"
-          value={value}
+          value={custom}
           placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          autoFocus={typing}
+          onChange={(e) => {
+            setCustom(e.target.value)
+            onChange(e.target.value)
+          }}
+          autoFocus={expanded}
         />
       ) : null}
     </div>
@@ -391,6 +348,7 @@ export function Sheet({
   onClose,
   children,
   footer,
+  steady = false,
 }: {
   title: string
   /** Context that must stay visible while the body scrolls — typically which day. */
@@ -398,6 +356,14 @@ export function Sheet({
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /**
+   * Hold one height regardless of what is inside.
+   *
+   * A sheet grows from the bottom edge, so a sheet whose contents can be swapped in
+   * place — days, in the calendar — jumps up and down as you move between a full day and
+   * an empty one. Anything the reader navigates *within* wants a steady frame.
+   */
+  steady?: boolean
 }) {
   const bodyRef = useRef<HTMLDivElement>(null)
 
@@ -420,7 +386,12 @@ export function Sheet({
   return (
     <>
       <div className="sheet-scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className={`sheet${steady ? ' is-steady' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className="sheet-head">
           <div>
             <h2 className="sheet-title">{title}</h2>

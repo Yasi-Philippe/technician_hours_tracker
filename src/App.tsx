@@ -22,7 +22,22 @@ export type TabId = 'day' | 'week' | 'stats' | 'settings'
  */
 export default function App() {
   const [tab, setTab] = useState<TabId>('day')
+  /*
+   * Two dates, deliberately.
+   *
+   * `selectedDate` is where the calendar and the statistics are pointed, and browsing to
+   * last March should leave it there. The day screen is a different question — it is
+   * where today's hours get filled in — so it keeps its own date and returns to today
+   * whenever it is opened. Sharing one date meant a look at last March left the day
+   * screen stranded on that week, with today nowhere on the strip.
+   */
   const [selectedDate, setSelectedDate] = useState(todayISO())
+  const [dayDate, setDayDate] = useState(todayISO())
+
+  const openTab = (next: TabId) => {
+    if (next === 'day') setDayDate(todayISO())
+    setTab(next)
+  }
   const toast = useToast()
 
   const settings = useLiveQuery(loadSettings, [], undefined)
@@ -64,19 +79,21 @@ export default function App() {
 
   return (
     <div className="app">
-      {tab === 'day' ? <DayScreen {...shared} /> : null}
+      {tab === 'day' ? (
+        <DayScreen {...shared} selectedDate={dayDate} onSelectDate={setDayDate} />
+      ) : null}
       {tab === 'week' ? <WeekScreen {...shared} /> : null}
       {tab === 'stats' ? <StatsScreen {...shared} /> : null}
       {tab === 'settings' ? <SettingsScreen {...shared} /> : null}
 
       <nav className="tabbar">
-        <TabButton id="day" current={tab} onSelect={setTab} icon="day" label={t.navToday} />
-        <TabButton id="week" current={tab} onSelect={setTab} icon="week" label={t.navCalendar} />
-        <TabButton id="stats" current={tab} onSelect={setTab} icon="stats" label={t.navStats} />
+        <TabButton id="day" current={tab} onSelect={openTab} icon="day" label={t.navToday} />
+        <TabButton id="week" current={tab} onSelect={openTab} icon="week" label={t.navCalendar} />
+        <TabButton id="stats" current={tab} onSelect={openTab} icon="stats" label={t.navStats} />
         <TabButton
           id="settings"
           current={tab}
-          onSelect={setTab}
+          onSelect={openTab}
           icon="settings"
           label={t.navSettings}
         />

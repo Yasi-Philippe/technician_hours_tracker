@@ -308,6 +308,9 @@ export default function WeekScreen({
         <Sheet
           title={t.day}
           subtitle={formatLongDate(openDay, settings.language)}
+          // Days are swapped inside this sheet, so its height must not follow whatever
+          // the chosen day happens to contain.
+          steady
           onClose={() => setOpenDay(null)}
           footer={
             <button type="button" className="btn btn-lg" onClick={() => setOpenDay(null)}>

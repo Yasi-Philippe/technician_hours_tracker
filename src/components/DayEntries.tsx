@@ -14,10 +14,15 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, newId, putEntry, deleteEntry as removeEntry } from '../db'
 import type { CompanyPack, Entry, Settings } from '../types'
 import type { Strings } from '../i18n'
-import { entrySetup, forgetPerson, forgetValue, rememberFromEntry } from '../screens/shared'
-import { EntryForm, type EntryDraft, type ForgettableList } from './EntryForm'
+import { entrySetup, forgetPerson, rememberFromEntry } from '../screens/shared'
+import { countUsage } from '../lib/ranking'
+import { addDaysISO, todayISO } from '../lib/dates'
+import { EntryForm, type EntryDraft } from './EntryForm'
 import { Empty, HoursSummary, type ToastState } from './ui'
 import { computeHours, formatClock, formatDuration } from '../lib/time'
+
+/** How far back the ranking looks. */
+const USAGE_WINDOW_DAYS = 30
 
 export function DayEntries({
   date,
@@ -50,6 +55,31 @@ export function DayEntries({
 
   const recent =
     useLiveQuery(() => db.entries.orderBy('updatedAt').reverse().limit(40).toArray(), [], []) ?? []
+
+  /*
+   * The last month of work decides which choices are worth offering. A month is long
+   * enough that a project worked every week stays at the top, and short enough that
+   * something used once and abandoned quietly disappears.
+   */
+  const since = addDaysISO(todayISO(), -USAGE_WINDOW_DAYS)
+  const recentForRanking =
+    useLiveQuery(
+      async (): Promise<Entry[]> => db.entries.where('date').aboveOrEqual(since).toArray(),
+      [since],
+    ) ?? []
+
+  const usage = useMemo(
+    () => ({
+      projects: countUsage(recentForRanking, (e) => e.project, (e) => e.updatedAt),
+      sections: countUsage(recentForRanking, (e) => e.section, (e) => e.updatedAt),
+      interventionTypes: countUsage(
+        recentForRanking,
+        (e) => e.interventionType,
+        (e) => e.updatedAt,
+      ),
+    }),
+    [recentForRanking],
+  )
 
   const setup = useMemo(() => entrySetup(pack, settings), [pack, settings])
 
@@ -150,15 +180,9 @@ export function DayEntries({
     onToast({ message: t.saved, tone: 'ok' })
   }
 
-  /** Forget a hand-typed value. Saved reports keep their own copy of the text. */
-  const forget = (list: ForgettableList, value: string) => {
-    if (list === 'colleagues') {
-      void onUpdateSettings({ customColleagues: forgetPerson(settings.customColleagues, value) })
-    } else {
-      void onUpdateSettings({
-        customValues: { ...settings.customValues, [list]: forgetValue(settings.customValues[list], value) },
-      })
-    }
+  /** Forget a colleague. Saved reports keep their own copy of the name. */
+  const forget = (name: string) => {
+    void onUpdateSettings({ customColleagues: forgetPerson(settings.customColleagues, name) })
     onToast({ message: t.removedFromList })
   }
 
@@ -235,6 +259,7 @@ export function DayEntries({
           settings={settings}
           t={t}
           recentEntries={recent}
+          usage={usage}
           onSave={() => void save()}
           onDelete={draft.id ? () => void remove() : undefined}
           onClose={() => setDraft(null)}

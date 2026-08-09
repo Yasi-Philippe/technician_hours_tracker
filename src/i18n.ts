@@ -347,7 +347,7 @@ const es: Strings = {
 
   backupTitle: 'Copia de seguridad',
   backupWarning:
-    'Tus partes están solo dentro de este teléfono, en la memoria del navegador. Esa memoria puede borrarse en cualquier momento: por el teléfono cuando se queda sin espacio, por una aplicación que “limpia”, o si borras los datos de navegación. Si pasa, los partes desaparecen y no se recuperan.',
+    'Tus datos están solo dentro de este teléfono, en la memoria del navegador. Esa memoria puede borrarse en cualquier momento: por el teléfono cuando se queda sin espacio, por una aplicación que “limpia”, o si borras los datos de navegación. Si pasa, los datos desaparecen y no se recuperan.',
   backupBody:
     'Por eso guarda una copia a menudo: una vez por semana. El mismo archivo sirve también para pasar a otro teléfono.',
   backupExport: 'Guardar una copia',

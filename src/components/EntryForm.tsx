@@ -15,11 +15,17 @@ import type { Strings } from '../i18n'
 import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
 import { Field, OptionGrid, RemoveConfirm, Sheet, TimeBox } from './ui'
 import { entrySetup, optionsWith, recentDescriptions } from '../screens/shared'
+import { rankOptions, type Usage } from '../lib/ranking'
 import { formatLongDate } from '../lib/dates'
 
 const STATUS_CHOICES = [100, 75, 50, 25]
 
-export type ForgettableList = 'projects' | 'sections' | 'interventionTypes' | 'colleagues'
+/**
+ * How many of the technician's *own* values stay on screen, and how many wait behind
+ * "Altro…". Everything the company file lists is always shown, whatever these say.
+ */
+const VISIBLE_CUSTOM = 4
+const EXTRA_CUSTOM = 12
 
 export interface EntryDraft {
   id: string | null
@@ -41,6 +47,7 @@ export function EntryForm({
   settings,
   t,
   recentEntries,
+  usage,
   onSave,
   onDelete,
   onClose,
@@ -53,11 +60,17 @@ export function EntryForm({
   settings: Settings
   t: Strings
   recentEntries: Entry[]
+  /** How often each value was used recently, which decides what is worth showing. */
+  usage: {
+    projects: Map<string, Usage>
+    sections: Map<string, Usage>
+    interventionTypes: Map<string, Usage>
+  }
   onSave: () => void
   onDelete?: () => void
   onClose: () => void
-  /** Forget a value the technician typed. Reports already using it are untouched. */
-  onForget: (list: ForgettableList, value: string) => void
+  /** Forget a colleague the technician typed. Reports already using them are untouched. */
+  onForget: (name: string) => void
 }) {
   const setup = useMemo(() => entrySetup(pack, settings), [pack, settings])
 
@@ -67,12 +80,39 @@ export function EntryForm({
     draft.extraMinutesOverride,
   )
 
-  // Frozen when the form opens. The lists must not shift while the technician is tapping
-  // through them, so the current value is folded in once, here, and never again.
+  /*
+   * Frozen when the form opens, for two reasons. The lists must not shift while the
+   * technician is tapping through them; and the ranking is drawn from recent work, which
+   * must not reshuffle the moment this report is saved.
+   *
+   * Ranked rather than listed in full: a month of varied work would otherwise put every
+   * value ever used on screen at once.
+   */
   const [options] = useState(() => ({
-    projects: optionsWith(setup.projects, draft.project),
-    sections: optionsWith(setup.sections, draft.section),
-    types: optionsWith(setup.interventionTypes, draft.interventionType),
+    projects: rankOptions({
+      fromPack: pack?.lists.projects ?? [],
+      custom: optionsWith(settings.customValues.projects, draft.project),
+      usage: usage.projects,
+      pinned: draft.project,
+      visibleCustom: VISIBLE_CUSTOM,
+      extraCustom: EXTRA_CUSTOM,
+    }),
+    sections: rankOptions({
+      fromPack: pack?.lists.sections ?? [],
+      custom: optionsWith(settings.customValues.sections, draft.section),
+      usage: usage.sections,
+      pinned: draft.section,
+      visibleCustom: VISIBLE_CUSTOM,
+      extraCustom: EXTRA_CUSTOM,
+    }),
+    types: rankOptions({
+      fromPack: pack?.lists.interventionTypes ?? [],
+      custom: optionsWith(settings.customValues.interventionTypes, draft.interventionType),
+      usage: usage.interventionTypes,
+      pinned: draft.interventionType,
+      visibleCustom: VISIBLE_CUSTOM,
+      extraCustom: EXTRA_CUSTOM,
+    }),
   }))
   const suggestions = useMemo(() => recentDescriptions(recentEntries), [recentEntries])
 
@@ -100,68 +140,58 @@ export function EntryForm({
       <Segments draft={draft} setDraft={setDraft} t={t} />
 
       <div className={`hours-readout${hours.extraMinutes > 0 ? ' has-overtime' : ''}`}>
-        <span className="hours-readout-main">{formatDuration(hours.totalMinutes)}</span>
-        <span className="hours-readout-split">
-          {formatDuration(hours.normalMinutes)} {t.normalHours.toLowerCase()}
-          {hours.extraMinutes > 0 ? (
-            <>
-              {' · '}
-              <b>
-                {formatDuration(hours.extraMinutes)} {t.extraHours.toLowerCase()}
-              </b>
-            </>
-          ) : null}
-        </span>
-      </div>
+        <div className="hours-readout-top">
+          <span className="hours-readout-main">{formatDuration(hours.totalMinutes)}</span>
+          <span className="hours-readout-split">
+            {formatDuration(hours.normalMinutes)} {t.normalHours.toLowerCase()}
+            {hours.extraMinutes > 0 ? (
+              <>
+                {' · '}
+                <b>
+                  {formatDuration(hours.extraMinutes)} {t.extraHours.toLowerCase()}
+                </b>
+              </>
+            ) : null}
+          </span>
+        </div>
 
-      <OvertimeMode
-        draft={draft}
-        setDraft={setDraft}
-        t={t}
-        hours={hours}
-        contractualMinutes={setup.contractualDailyMinutes}
-      />
+        <OvertimeMode
+          draft={draft}
+          setDraft={setDraft}
+          t={t}
+          hours={hours}
+          contractualMinutes={setup.contractualDailyMinutes}
+        />
+      </div>
 
       <Field label={t.project}>
         <OptionGrid
-          options={options.projects}
+          options={options.projects.shown}
+          moreOptions={options.projects.more}
           value={draft.project}
           onChange={(project) => setDraft({ ...draft, project })}
           otherLabel={t.otherValue}
-          removable={(v) => isOwn(settings.customValues.projects, v)}
-          onRemove={(v) => onForget('projects', v)}
-          moreLabel={t.moreOptions}
-          removeLabel={t.removeFromList}
-          cancelLabel={t.cancel}
         />
       </Field>
 
       <Field label={t.section}>
         <OptionGrid
-          options={options.sections}
+          options={options.sections.shown}
+          moreOptions={options.sections.more}
           value={draft.section}
           onChange={(section) => setDraft({ ...draft, section })}
           otherLabel={t.otherValue}
           placeholder={setup.emptySectionText}
-          removable={(v) => isOwn(settings.customValues.sections, v)}
-          onRemove={(v) => onForget('sections', v)}
-          moreLabel={t.moreOptions}
-          removeLabel={t.removeFromList}
-          cancelLabel={t.cancel}
         />
       </Field>
 
       <Field label={t.interventionType}>
         <OptionGrid
-          options={options.types}
+          options={options.types.shown}
+          moreOptions={options.types.more}
           value={draft.interventionType}
           onChange={(interventionType) => setDraft({ ...draft, interventionType })}
           otherLabel={t.otherValue}
-          removable={(v) => isOwn(settings.customValues.interventionTypes, v)}
-          onRemove={(v) => onForget('interventionTypes', v)}
-          moreLabel={t.moreOptions}
-          removeLabel={t.removeFromList}
-          cancelLabel={t.cancel}
         />
       </Field>
 
@@ -192,7 +222,7 @@ export function EntryForm({
         pool={setup.colleagues}
         selected={draft.colleagues}
         onChange={(colleagues) => setDraft({ ...draft, colleagues })}
-        onForget={(name) => onForget('colleagues', name)}
+        onForget={onForget}
       />
     </Sheet>
   )
@@ -356,13 +386,12 @@ function DescriptionField({
 /**
  * Which mode overtime is in, always stated rather than implied.
  *
- * The earlier version showed only a "correct the overtime" button, which read as an
- * instruction — several people would reasonably conclude they had to enter overtime by
- * hand every day. Both modes are now visible side by side with the active one selected,
- * so the answer to "am I supposed to fill this in?" is on screen.
+ * It sits with the hours it describes, directly under the clocks, rather than as a card
+ * of its own in the middle of the form — it is a qualifier on a number, not a step in
+ * filling the report, and it was carrying far more weight than it earns.
  *
- * Automatic is the default and stays the default: nothing here changes unless the
- * technician deliberately switches.
+ * Both modes stay visible so the answer to "am I supposed to fill this in?" is on screen.
+ * Automatic is the default and stays the default.
  */
 function OvertimeMode({
   draft,
@@ -387,14 +416,14 @@ function OvertimeMode({
     })
 
   return (
-    <div className="card" style={{ marginTop: 12 }}>
-      <div className="card-body">
-        <span className="field-label">{t.extraHours}</span>
+    <div className="overtime">
+      <div className="overtime-row">
+        <span className="overtime-label">{t.extraHours}</span>
 
-        <div className="options cols-2">
+        <span className="segmented">
           <button
             type="button"
-            className={`option${manual ? '' : ' is-selected'}`}
+            className={`segmented-btn${manual ? '' : ' is-on'}`}
             aria-pressed={!manual}
             onClick={() => setDraft({ ...draft, extraMinutesOverride: null })}
           >
@@ -402,7 +431,7 @@ function OvertimeMode({
           </button>
           <button
             type="button"
-            className={`option${manual ? ' is-selected' : ''}`}
+            className={`segmented-btn${manual ? ' is-on' : ''}`}
             aria-pressed={manual}
             // Seeded with the calculated figure, not zero. Switching to manual to nudge
             // the number by half an hour should not silently wipe it first.
@@ -410,40 +439,36 @@ function OvertimeMode({
           >
             {t.overtimeManualMode}
           </button>
-        </div>
-
-        {manual ? (
-          <div className="spread" style={{ marginTop: 14 }}>
-            <button
-              type="button"
-              className="btn"
-              style={{ width: 64 }}
-              aria-label={`${t.extraHours} −30`}
-              onClick={() => step(-30)}
-            >
-              −
-            </button>
-            <strong style={{ fontSize: 24, fontVariantNumeric: 'tabular-nums' }}>
-              {formatDuration(value)}
-            </strong>
-            <button
-              type="button"
-              className="btn"
-              style={{ width: 64 }}
-              aria-label={`${t.extraHours} +30`}
-              onClick={() => step(30)}
-            >
-              +
-            </button>
-          </div>
-        ) : null}
-
-        <p className="hint">
-          {manual
-            ? t.overtimeManualExplain
-            : t.overtimeAutoExplain.replace('{h}', formatDuration(contractualMinutes))}
-        </p>
+        </span>
       </div>
+
+      {manual ? (
+        <div className="overtime-row overtime-stepper">
+          <button
+            type="button"
+            className="overtime-step"
+            aria-label={`${t.extraHours} −30`}
+            onClick={() => step(-30)}
+          >
+            −
+          </button>
+          <strong className="overtime-value">{formatDuration(value)}</strong>
+          <button
+            type="button"
+            className="overtime-step"
+            aria-label={`${t.extraHours} +30`}
+            onClick={() => step(30)}
+          >
+            +
+          </button>
+        </div>
+      ) : null}
+
+      <p className="overtime-hint">
+        {manual
+          ? t.overtimeManualExplain
+          : t.overtimeAutoExplain.replace('{h}', formatDuration(contractualMinutes))}
+      </p>
     </div>
   )
 }
@@ -485,21 +510,32 @@ function ColleaguePicker({
           {pool.map((person) => (
             // Every colleague here was typed by this technician, so every one can be
             // taken back out — which is the whole point of the ⋯ beside the name.
-            <span className="chip-wrap" key={person.name}>
-              <button
-                type="button"
-                className={`chip${isSelected(person) ? ' is-selected' : ''}`}
-                onClick={() => toggle(person)}
-              >
+            <span
+              className={`chip-wrap${isSelected(person) ? ' is-selected' : ''}`}
+              key={person.name}
+            >
+              <button type="button" className="chip" onClick={() => toggle(person)}>
                 {person.name}
               </button>
               <button
                 type="button"
                 className="chip-more"
                 aria-label={`${t.moreOptions}: ${person.name}`}
+                aria-expanded={confirming === person.name}
                 onClick={() => setConfirming(confirming === person.name ? null : person.name)}
               >
-                ⋯
+                {/* A chevron, not a cross: a cross beside a chosen name reads as
+                    "unselect", which is what tapping the name already does. */}
+                <svg viewBox="0 0 12 12" aria-hidden="true">
+                  <path
+                    d="M2.5 4.5 6 8l3.5-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
             </span>
           ))}
@@ -567,7 +603,3 @@ function ColleaguePicker({
 }
 
 
-/** Whether a value is one the technician typed, rather than one the company supplied. */
-function isOwn(custom: string[], value: string): boolean {
-  return custom.some((v) => v.trim().toLowerCase() === value.trim().toLowerCase())
-}

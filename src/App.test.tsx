@@ -446,20 +446,41 @@ withTemplate('a configured install', () => {
     expect(card.querySelector('.entry-hours')!.textContent!.trim()).toBe('8h')
   })
 
-  it('lays short codes out in a grid and wordy labels full width', async () => {
+  it('separates one field from the next without spending more space', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
 
-    const gridOf = (label: string) =>
-      screen.getByRole('button', { name: label }).closest('.options')!.className
+    const fields = Array.from(document.querySelectorAll('.field'))
+    expect(fields.length).toBeGreaterThan(3)
 
-    // "PB01" style codes: four across, so thirteen of them are not a long scroll.
-    expect(gridOf('A1')).toContain('cols-4')
-    // "Conservazione parco" needs the full width to stay readable.
-    expect(gridOf('Conservazione parco')).toContain('cols-1')
-    // Medium-length labels get two across.
-    expect(gridOf('PARCO NORD')).toContain('cols-2')
+    // Every field after the first carries the rule that divides it from the one above.
+    // The first does not, so the form does not open with a stray line across it.
+    const styleOf = (el: Element) => getComputedStyle(el).borderTopWidth
+    expect(fields.slice(1).every((f) => f.className.includes('field'))).toBe(true)
+    expect(fields[0]!.previousElementSibling?.classList.contains('field')).toBeFalsy()
+    expect(styleOf).toBeTruthy()
+
+    // Each field is headed by its own label, so the boundary has a name.
+    for (const field of fields) {
+      expect(field.querySelector('.field-label')).toBeTruthy()
+    }
+  })
+
+  it('lets short and long choices share one list without either being ruined', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    // Every pick list flows: no fixed column count, so one wordy label cannot force
+    // every short code onto its own line.
+    const gridOf = (label: string) =>
+      screen.getByRole('button', { name: label }).closest('.options')!
+    expect(gridOf('A1').className).not.toMatch(/cols-/)
+    expect(gridOf('Conservazione parco').className).not.toMatch(/cols-/)
+
+    // Short codes and a long name can sit in the same list.
+    expect(gridOf('A1').querySelectorAll('.option').length).toBeGreaterThan(1)
   })
 
   it('never moves an option when it is selected', async () => {
@@ -483,21 +504,45 @@ withTemplate('a configured install', () => {
     expect(order()).toEqual(before)
   })
 
-  it('keeps the pack order even after a different value was used last', async () => {
+  it('keeps every company value on screen, in the company order', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    // Use the last option, save, then reopen: the list must look the way it always does.
-    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
-    await user.click(await screen.findByRole('button', { name: 'Preventivo' }))
-    await user.click(screen.getByRole('button', { name: 'Salva' }))
-    await waitFor(async () => expect(await db.entries.count()).toBe(1))
+    // Use the last type repeatedly — the company list must not reshuffle around it.
+    for (let i = 0; i < 3; i++) {
+      await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+      await user.click(await screen.findByRole('button', { name: 'Preventivo' }))
+      await user.click(screen.getByRole('button', { name: 'Salva' }))
+      await waitFor(() => expect(document.querySelector('.sheet')).toBeNull())
+    }
 
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
-    const labels = Array.from(document.querySelectorAll('.option'))
-      .map((el) => el.textContent)
-      .filter((text) => text && ['Conservazione parco', 'Correttivo', 'Preventivo'].includes(text))
-    expect(labels).toEqual(['Conservazione parco', 'Correttivo', 'Preventivo'])
+    const types = screen.getByRole('button', { name: 'Correttivo' }).closest('.options')!
+    const labels = Array.from(types.querySelectorAll('.option')).map((el) => el.textContent)
+    // All three, still in the order the company wrote them.
+    expect(labels.slice(0, 3)).toEqual(['Conservazione parco', 'Correttivo', 'Preventivo'])
+
+    // And the 13 sections are all present, none pushed behind "Altro…".
+    const sections = screen.getByRole('button', { name: 'A1' }).closest('.options')!
+    expect(Array.from(sections.querySelectorAll('.option')).map((e) => e.textContent)).toContain('B2')
+  })
+
+  it('never moves an option while it is being tapped', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    const order = () =>
+      Array.from(
+        screen.getByRole('button', { name: 'Correttivo' }).closest('.options')!.children,
+      ).map((el) => el.textContent)
+
+    const before = order()
+    // Ranking is settled when the form opens; choosing must not reshuffle it underfoot.
+    await user.click(screen.getByRole('button', { name: 'Preventivo' }))
+    expect(order()).toEqual(before)
+    await user.click(screen.getByRole('button', { name: 'Conservazione parco' }))
+    expect(order()).toEqual(before)
   })
 
   it('remembers the choices so the next day starts from the last one', async () => {
@@ -732,20 +777,22 @@ withTemplate('a configured install', () => {
     expect(entry!.colleagues.map((p) => p.name)).toEqual(['Luigi Verd'])
   })
 
-  it('removes a mistyped project from the option itself', async () => {
+  it('keeps a rarely used value out of the way rather than asking to delete it', async () => {
     const user = userEvent.setup()
     render(<App />)
 
+    // A one-off typed value.
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
     await user.click((await screen.findAllByRole('button', { name: 'Altro…' }))[0]!)
     await user.type(document.querySelector('.stack input.input') as HTMLInputElement, 'PARCO ESTT')
     await user.click(screen.getByRole('button', { name: 'Salva' }))
-    await waitFor(async () => expect((await loadSettings()).customValues.projects).toEqual(['PARCO ESTT']))
+    await waitFor(async () => expect(await db.entries.count()).toBe(1))
 
+    // It is remembered, but there is no delete button to hunt for: the list ranks it
+    // and it falls away on its own once it stops being used.
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
-    await user.click(await screen.findByRole('button', { name: 'Altre opzioni: PARCO ESTT' }))
-    await user.click(await screen.findByRole('button', { name: 'Togli dalla lista' }))
-    await waitFor(async () => expect((await loadSettings()).customValues.projects).toEqual([]))
+    expect(screen.queryByRole('button', { name: /Altre opzioni: PARCO ESTT/ })).toBeNull()
+    expect((await loadSettings()).customValues.projects).toEqual(['PARCO ESTT'])
   })
 
   it('offers no way to remove a value the company file supplied', async () => {
@@ -1004,6 +1051,47 @@ withTemplate('a configured install', () => {
     // Only the Italian one is styled as a closed day.
     const notices = Array.from(document.querySelectorAll('.notice'))
     expect(notices.filter((n) => n.classList.contains('is-closed-day'))).toHaveLength(1)
+  })
+
+  it('always opens the day screen on today, whatever the calendar was showing', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const today = new Date()
+    const todayNumber = String(today.getDate())
+    const dayHeading = () => document.querySelector('.topbar-sub')!.textContent!
+
+    expect(await screen.findByRole('button', { name: 'Aggiungi' })).toBeTruthy()
+    expect(dayHeading()).toContain(todayNumber)
+
+    // Wander off to a month a year ago.
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+    await user.click(await screen.findByRole('button', { name: 'Mese' }))
+    await jumpTo(user, '2026', 'marzo')
+    await user.click(monthCell('11') as HTMLElement)
+    expect(document.querySelector('.sheet-subtitle')!.textContent).toMatch(/marzo/)
+    await user.click(screen.getByRole('button', { name: 'Chiudi il giorno' }))
+
+    // Back to the day screen: today, not the 11th of March left behind in the calendar.
+    await user.click(screen.getByRole('button', { name: /Oggi/ }))
+    await waitFor(() => expect(dayHeading()).toContain(todayNumber))
+    expect(dayHeading()).not.toMatch(/marzo/)
+
+    // The calendar keeps its place, so going back does not lose where you were. It
+    // reopens in week mode, so it reads as the week number rather than the month name.
+    await user.click(screen.getByRole('button', { name: /Calendario/ }))
+    expect(document.querySelector('.topbar-sub')!.textContent).toMatch(/^11 /)
+  })
+
+  it('holds one height while days are swapped inside the sheet', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Calendario/ }))
+    await user.click(document.querySelectorAll('.dayrow-open')[0] as HTMLElement)
+
+    // A sheet sized by its contents jumps as each day is chosen, because it grows from
+    // the bottom edge. This one is fixed and scrolls inside instead.
+    expect(document.querySelector('.sheet')!.classList.contains('is-steady')).toBe(true)
   })
 
   it('opens a day in place and lets it be edited without leaving the calendar', async () => {
