@@ -50,10 +50,18 @@ export function PackLoader({
 
   return (
     <div className="stack">
+      {/*
+        No `accept` filter on purpose.
+
+        Android's document picker filters by MIME type, and a file that arrived through
+        WhatsApp or e-mail is stored as application/octet-stream — so a filter of
+        "application/json" hides the very file the technician was sent, with nothing on
+        screen to explain why. The contents are validated on load anyway, so a wrong file
+        gets a message rather than a mystery.
+      */}
       <input
         ref={inputRef}
         type="file"
-        accept="application/json,.json"
         className="visually-hidden"
         onChange={(e) => void handle(e.target.files?.[0])}
       />

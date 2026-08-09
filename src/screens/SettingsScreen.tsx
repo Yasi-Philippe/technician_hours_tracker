@@ -122,10 +122,11 @@ export default function SettingsScreen({
             >
               {t.backupExport}
             </button>
+            {/* Unfiltered for the same reason as the company file: a backup shared
+                through a messaging app carries no JSON type, and a filter would hide it. */}
             <input
               ref={importRef}
               type="file"
-              accept="application/json,.json"
               className="visually-hidden"
               onChange={(e) => void importBackup(e.target.files?.[0])}
             />
