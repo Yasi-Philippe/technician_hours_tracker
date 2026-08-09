@@ -82,22 +82,32 @@ export function HoursChart({
 
   return (
     <div className="chart-block">
-      {/* The readout doubles as the tooltip: on a phone a floating bubble is worse
-          than a fixed line that is always in the same place. */}
+      {/*
+        The readout doubles as the tooltip: on a phone a floating bubble is worse than a
+        fixed line that is always in the same place.
+
+        Both lines are always rendered — filled with a non-breaking space when nothing is
+        hovered — so the block has exactly one height and the chart below it cannot move.
+        Reserving space with a min-height did not hold: the real content is taller than
+        the reservation, so everything shifted down the moment a bar was touched.
+      */}
       <div className="chart-readout" role="status">
-        {shown ? (
-          <>
-            <span className="chart-readout-label">{shown.fullLabel}</span>
-            <span className="chart-readout-value">
+        <span className="chart-readout-label">{shown ? shown.fullLabel : '\u00A0'}</span>
+        <span className="chart-readout-value">
+          {shown ? (
+            <>
               {formatHours(shown.normalMinutes + shown.extraMinutes)}
               {shown.extraMinutes > 0 ? (
-                <span className="chart-readout-extra"> · {formatHours(shown.extraMinutes)} {extraLabel}</span>
+                <span className="chart-readout-extra">
+                  {' · '}
+                  {formatHours(shown.extraMinutes)} {extraLabel}
+                </span>
               ) : null}
-            </span>
-          </>
-        ) : (
-          <span className="chart-readout-hint">&nbsp;</span>
-        )}
+            </>
+          ) : (
+            '\u00A0'
+          )}
+        </span>
       </div>
 
       <svg

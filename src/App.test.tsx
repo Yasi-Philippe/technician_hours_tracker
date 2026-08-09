@@ -715,6 +715,48 @@ withTemplate('a configured install', () => {
     expect(screen.getByRole('button', { name: 'Mese' }).getAttribute('aria-pressed')).toBe('false')
   })
 
+  it('keeps the chart readout the same shape whether or not a bar is touched', async () => {
+    const user = userEvent.setup()
+    const today = new Date()
+    await db.entries.put({
+      id: 'hover',
+      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-04`,
+      startMinutes: 420,
+      endMinutes: 1020,
+      extraMinutesOverride: null,
+      project: 'PARCO NORD',
+      section: '',
+      interventionType: 'Correttivo',
+      statusPercent: 100,
+      description: 'Lavoro',
+      technician: { name: 'Mario Rossi', email: 'mario@example.test' },
+      colleagues: [],
+      createdAt: 1,
+      updatedAt: 1,
+    })
+
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: /Statistiche/ }))
+    await screen.findByText('Ore per giorno')
+
+    // Both lines exist before anything is hovered — that is what stops the shift.
+    const label = () => document.querySelector('.chart-readout-label')!
+    const value = () => document.querySelector('.chart-readout-value')!
+    expect(label()).toBeTruthy()
+    expect(value()).toBeTruthy()
+    expect(label().textContent).toBe('\u00A0')
+    expect(value().textContent).toBe('\u00A0')
+
+    // Hover a column: the same two elements fill in, none are added or removed.
+    const column = document.querySelector('.chart-normal')!.closest('g')!
+    await user.hover(column)
+
+    expect(document.querySelectorAll('.chart-readout-label')).toHaveLength(1)
+    expect(document.querySelectorAll('.chart-readout-value')).toHaveLength(1)
+    expect(label().textContent).not.toBe('\u00A0')
+    expect(value().textContent).toContain('10h')
+  })
+
   it('offers the numbers behind the chart, for anyone who cannot read it', async () => {
     const user = userEvent.setup()
     const today = new Date()
