@@ -12,7 +12,12 @@ export default defineConfig({
 
   build: {
     outDir: 'dist',
-    target: 'es2022',
+    /*
+     * Deliberately conservative. These are work phones, not new ones, and a syntax the
+     * browser cannot parse fails as a blank page with nothing in the interface to
+     * explain it. es2020 covers Safari 14 and Chrome 80 upward at no real cost.
+     */
+    target: 'es2020',
     rollupOptions: {
       input: {
         main: here('./index.html'),

@@ -59,8 +59,23 @@ export default function App() {
 
   const t = useMemo(() => strings(settings?.language ?? 'it'), [settings?.language])
 
-  // Still opening the database. A flash of the wrong screen is worse than a blank one.
-  if (settings === undefined) return <div className="app" />
+  /*
+   * Still opening the database.
+   *
+   * This used to render an empty element, which is indistinguishable from the app having
+   * failed — and on a phone that is exactly what it looks like. It now says so, and if
+   * the database cannot be opened at all `main.tsx` replaces the page with the reason.
+   */
+  if (settings === undefined) {
+    return (
+      <div className="app">
+        <div className="booting">
+          <div className="booting-mark" />
+          <p className="booting-text">Cronos</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!settings.onboardingComplete) {
     return <Onboarding settings={settings} pack={pack ?? null} onUpdate={update} />
