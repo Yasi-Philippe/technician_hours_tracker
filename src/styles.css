@@ -703,6 +703,40 @@ textarea.input {
   gap: 8px;
 }
 
+/*
+ * A value the technician typed carries a ⋯ beside it. The pair share a wrapper because
+ * a button inside a button is neither valid nor reliably tappable.
+ */
+.option-wrap {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.option-wrap .option {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-more,
+.chip-more {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  border-radius: var(--radius);
+  width: 44px;
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.option-more:active,
+.chip-more:active {
+  background: var(--paper-sunk);
+}
+
 .options.cols-2 {
   grid-template-columns: 1fr 1fr;
 }
@@ -1884,4 +1918,36 @@ textarea.input {
   border-radius: var(--radius);
   padding: 10px;
   margin-bottom: 16px;
+}
+
+/* Chips carry the same control, sized to sit beside a rounded chip. */
+.chip-wrap {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.chip-more {
+  border-radius: 999px;
+  width: 40px;
+  min-height: 44px;
+}
+
+/*
+ * Removing is confirmed in words rather than in a floating menu: the value is named,
+ * and the two choices are full-size buttons that cannot be mis-tapped.
+ */
+.remove-confirm {
+  border: 1px solid var(--accent-line);
+  background: var(--accent-wash);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.remove-confirm-value {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 10px;
+  word-break: break-word;
 }

@@ -138,6 +138,13 @@ export interface OptionGridProps {
   /** Omit to let the grid size itself from the length of the labels. */
   columns?: 1 | 2 | 4
   placeholder?: string
+  /** True for values the technician typed themselves, which they may remove. */
+  removable?: (value: string) => boolean
+  onRemove?: (value: string) => void
+  /** Labels for the remove affordance, so this stays free of interface text. */
+  moreLabel?: string
+  removeLabel?: string
+  cancelLabel?: string
 }
 
 /**
@@ -168,8 +175,14 @@ export function OptionGrid({
   otherLabel,
   columns,
   placeholder,
+  removable,
+  onRemove,
+  moreLabel = '',
+  removeLabel = '',
+  cancelLabel = '',
 }: OptionGridProps) {
   const [typing, setTyping] = useState(false)
+  const [confirming, setConfirming] = useState<string | null>(null)
   const known = options.includes(value)
   const showCustom = typing || (value !== '' && !known)
   const across = columns ?? autoColumns(options)
@@ -177,19 +190,41 @@ export function OptionGrid({
   return (
     <div className="stack">
       <div className={`options cols-${across}`}>
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`option${value === option && !typing ? ' is-selected' : ''}`}
-            onClick={() => {
-              setTyping(false)
-              onChange(option)
-            }}
-          >
-            {option}
-          </button>
-        ))}
+        {options.map((option) => {
+          const canRemove = removable?.(option) === true && onRemove !== undefined
+          const button = (
+            <button
+              type="button"
+              className={`option${value === option && !typing ? ' is-selected' : ''}`}
+              onClick={() => {
+                setTyping(false)
+                setConfirming(null)
+                onChange(option)
+              }}
+            >
+              {option}
+            </button>
+          )
+          // A value the technician typed carries its own way out. A button inside a
+          // button is not valid, so the pair share a wrapper instead.
+          return canRemove ? (
+            <span className="option-wrap" key={option}>
+              {button}
+              <button
+                type="button"
+                className="option-more"
+                aria-label={`${moreLabel}: ${option}`}
+                onClick={() => setConfirming(confirming === option ? null : option)}
+              >
+                ⋯
+              </button>
+            </span>
+          ) : (
+            <span className="option-wrap" key={option}>
+              {button}
+            </span>
+          )
+        })}
         {otherLabel ? (
           <button
             type="button"
@@ -203,6 +238,19 @@ export function OptionGrid({
           </button>
         ) : null}
       </div>
+      {confirming !== null ? (
+        <RemoveConfirm
+          value={confirming}
+          removeLabel={removeLabel}
+          cancelLabel={cancelLabel}
+          onRemove={() => {
+            onRemove?.(confirming)
+            setConfirming(null)
+          }}
+          onCancel={() => setConfirming(null)}
+        />
+      ) : null}
+
       {showCustom ? (
         <input
           className="input"
@@ -212,6 +260,41 @@ export function OptionGrid({
           autoFocus={typing}
         />
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Confirming a removal, inline and in words.
+ *
+ * A floating menu is fiddly to hit and easy to dismiss by accident; a strip that names
+ * the value and offers two large buttons cannot be misread. Removing only forgets the
+ * value for next time — reports that already use it keep their own copy.
+ */
+export function RemoveConfirm({
+  value,
+  removeLabel,
+  cancelLabel,
+  onRemove,
+  onCancel,
+}: {
+  value: string
+  removeLabel: string
+  cancelLabel: string
+  onRemove: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="remove-confirm">
+      <span className="remove-confirm-value">{value}</span>
+      <div className="btn-row">
+        <button type="button" className="btn btn-danger" onClick={onRemove}>
+          {removeLabel}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      </div>
     </div>
   )
 }

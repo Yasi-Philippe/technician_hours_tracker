@@ -9,7 +9,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Language } from '../types'
 import type { ScreenProps } from './shared'
-import { customCounts, forgetPerson, forgetValue } from './shared'
 import { LANGUAGE_NAMES } from '../i18n'
 import { Card, Credit, Field, downloadBlob } from '../components/ui'
 import { PackLoader } from '../components/PackLoader'
@@ -175,8 +174,6 @@ export default function SettingsScreen({
           </Field>
         </Card>
 
-        <ManagedLists settings={settings} t={t} onUpdateSettings={onUpdateSettings} onToast={onToast} />
-
         <Card title={t.language}>
           <div className="options cols-2">
             {(Object.keys(LANGUAGE_NAMES) as Language[]).map((code) => (
@@ -256,111 +253,5 @@ export default function SettingsScreen({
         <Credit text={t.credit} />
       </div>
     </div>
-  )
-}
-
-/**
- * Everything the technician has typed by hand, with a way to remove it.
- *
- * Hand-typed values are remembered so they can be offered again, which means a typo is
- * remembered just as faithfully as a real project. Without somewhere to delete them the
- * lists only ever grow, and a misspelt colleague sits next to the correct one for good.
- *
- * Values that come from the company file are not listed: they are not the technician's
- * to remove, and a reissued pack would bring them straight back.
- *
- * Removing a value never touches saved reports. Each entry keeps its own copy of the
- * text, so correcting a list cannot rewrite history.
- */
-function ManagedLists({
-  settings,
-  t,
-  onUpdateSettings,
-  onToast,
-}: {
-  settings: ScreenProps['settings']
-  t: ScreenProps['t']
-  onUpdateSettings: ScreenProps['onUpdateSettings']
-  onToast: ScreenProps['onToast']
-}) {
-  const removed = () => onToast({ message: t.removedEntry })
-
-  const lists: { label: string; values: string[]; remove: (value: string) => void }[] = [
-    {
-      label: t.myEntriesProjects,
-      values: settings.customValues.projects,
-      remove: (value) =>
-        void onUpdateSettings({
-          customValues: {
-            ...settings.customValues,
-            projects: forgetValue(settings.customValues.projects, value),
-          },
-        }).then(removed),
-    },
-    {
-      label: t.myEntriesSections,
-      values: settings.customValues.sections,
-      remove: (value) =>
-        void onUpdateSettings({
-          customValues: {
-            ...settings.customValues,
-            sections: forgetValue(settings.customValues.sections, value),
-          },
-        }).then(removed),
-    },
-    {
-      label: t.myEntriesTypes,
-      values: settings.customValues.interventionTypes,
-      remove: (value) =>
-        void onUpdateSettings({
-          customValues: {
-            ...settings.customValues,
-            interventionTypes: forgetValue(settings.customValues.interventionTypes, value),
-          },
-        }).then(removed),
-    },
-    {
-      label: t.myEntriesColleagues,
-      values: settings.customColleagues.map((person) => person.name),
-      remove: (value) =>
-        void onUpdateSettings({
-          customColleagues: forgetPerson(settings.customColleagues, value),
-        }).then(removed),
-    },
-  ]
-
-  return (
-    <Card title={t.myEntries}>
-      <p className="hint" style={{ marginTop: 0 }}>
-        {t.myEntriesBody}
-      </p>
-
-      {customCounts(settings) === 0 ? (
-        <p className="hint">{t.myEntriesNone}</p>
-      ) : (
-        lists
-          .filter((list) => list.values.length > 0)
-          .map((list) => (
-            <div key={list.label} style={{ marginTop: 16 }}>
-              <span className="field-label">{list.label}</span>
-              <div className="rows">
-                {list.values.map((value) => (
-                  <div className="row row-static" key={value}>
-                    <span className="row-label">{value}</span>
-                    <button
-                      type="button"
-                      className="row-remove"
-                      aria-label={`${t.removeEntry} ${value}`}
-                      onClick={() => list.remove(value)}
-                    >
-                      {t.removeEntry}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))
-      )}
-    </Card>
   )
 }

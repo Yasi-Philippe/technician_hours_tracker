@@ -452,7 +452,7 @@ withTemplate('a configured install', () => {
     await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
 
     const gridOf = (label: string) =>
-      screen.getByRole('button', { name: label }).parentElement!.className
+      screen.getByRole('button', { name: label }).closest('.options')!.className
 
     // "PB01" style codes: four across, so thirteen of them are not a long scroll.
     expect(gridOf('A1')).toContain('cols-4')
@@ -709,7 +709,7 @@ withTemplate('a configured install', () => {
     expect(screen.getByText(/una vez por semana/)).toBeTruthy()
   })
 
-  it('removes a mistyped colleague from settings without touching saved reports', async () => {
+  it('removes a mistyped colleague from the chip, without touching saved reports', async () => {
     const user = userEvent.setup()
     render(<App />)
 
@@ -721,13 +721,41 @@ withTemplate('a configured install', () => {
     await waitFor(async () => expect(await db.entries.count()).toBe(1))
     expect((await loadSettings()).customColleagues.map((p) => p.name)).toEqual(['Luigi Verd'])
 
-    await user.click(screen.getByRole('button', { name: /Impostazioni/ }))
-    await user.click(await screen.findByRole('button', { name: 'Togli Luigi Verd' }))
+    // The name is offered as a chip, with its own way out — no trip to settings.
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Altre opzioni: Luigi Verd' }))
+    await user.click(await screen.findByRole('button', { name: 'Togli dalla lista' }))
 
     await waitFor(async () => expect((await loadSettings()).customColleagues).toEqual([]))
     // The report that already used the name keeps it: correcting a list is not a rewrite.
     const [entry] = await db.entries.toArray()
     expect(entry!.colleagues.map((p) => p.name)).toEqual(['Luigi Verd'])
+  })
+
+  it('removes a mistyped project from the option itself', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click((await screen.findAllByRole('button', { name: 'Altro…' }))[0]!)
+    await user.type(document.querySelector('.stack input.input') as HTMLInputElement, 'PARCO ESTT')
+    await user.click(screen.getByRole('button', { name: 'Salva' }))
+    await waitFor(async () => expect((await loadSettings()).customValues.projects).toEqual(['PARCO ESTT']))
+
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+    await user.click(await screen.findByRole('button', { name: 'Altre opzioni: PARCO ESTT' }))
+    await user.click(await screen.findByRole('button', { name: 'Togli dalla lista' }))
+    await waitFor(async () => expect((await loadSettings()).customValues.projects).toEqual([]))
+  })
+
+  it('offers no way to remove a value the company file supplied', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+
+    // Pack values are not the technician's to delete — a reissued pack would restore them.
+    expect(screen.queryByRole('button', { name: 'Altre opzioni: PARCO NORD' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Altre opzioni: Correttivo' })).toBeNull()
   })
 
   it('treats the same name typed differently as one remembered entry', async () => {

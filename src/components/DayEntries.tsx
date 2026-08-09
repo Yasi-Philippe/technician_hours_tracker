@@ -14,8 +14,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, newId, putEntry, deleteEntry as removeEntry } from '../db'
 import type { CompanyPack, Entry, Settings } from '../types'
 import type { Strings } from '../i18n'
-import { entrySetup, rememberFromEntry } from '../screens/shared'
-import { EntryForm, type EntryDraft } from './EntryForm'
+import { entrySetup, forgetPerson, forgetValue, rememberFromEntry } from '../screens/shared'
+import { EntryForm, type EntryDraft, type ForgettableList } from './EntryForm'
 import { Empty, HoursSummary, type ToastState } from './ui'
 import { computeHours, formatClock, formatDuration } from '../lib/time'
 
@@ -150,6 +150,18 @@ export function DayEntries({
     onToast({ message: t.saved, tone: 'ok' })
   }
 
+  /** Forget a hand-typed value. Saved reports keep their own copy of the text. */
+  const forget = (list: ForgettableList, value: string) => {
+    if (list === 'colleagues') {
+      void onUpdateSettings({ customColleagues: forgetPerson(settings.customColleagues, value) })
+    } else {
+      void onUpdateSettings({
+        customValues: { ...settings.customValues, [list]: forgetValue(settings.customValues[list], value) },
+      })
+    }
+    onToast({ message: t.removedFromList })
+  }
+
   const remove = async () => {
     if (!draft?.id) return
     const snapshot = await db.entries.get(draft.id)
@@ -226,6 +238,7 @@ export function DayEntries({
           onSave={() => void save()}
           onDelete={draft.id ? () => void remove() : undefined}
           onClose={() => setDraft(null)}
+          onForget={forget}
         />
       ) : null}
     </>

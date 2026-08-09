@@ -13,11 +13,13 @@ import { useMemo, useState } from 'react'
 import type { CompanyPack, Entry, Person, Settings, TimeRange } from '../types'
 import type { Strings } from '../i18n'
 import { clamp, computeHours, formatDuration, type Hours } from '../lib/time'
-import { Field, OptionGrid, Sheet, TimeBox } from './ui'
+import { Field, OptionGrid, RemoveConfirm, Sheet, TimeBox } from './ui'
 import { entrySetup, optionsWith, recentDescriptions } from '../screens/shared'
 import { formatLongDate } from '../lib/dates'
 
 const STATUS_CHOICES = [100, 75, 50, 25]
+
+export type ForgettableList = 'projects' | 'sections' | 'interventionTypes' | 'colleagues'
 
 export interface EntryDraft {
   id: string | null
@@ -42,6 +44,7 @@ export function EntryForm({
   onSave,
   onDelete,
   onClose,
+  onForget,
 }: {
   draft: EntryDraft
   setDraft: (next: EntryDraft) => void
@@ -53,6 +56,8 @@ export function EntryForm({
   onSave: () => void
   onDelete?: () => void
   onClose: () => void
+  /** Forget a value the technician typed. Reports already using it are untouched. */
+  onForget: (list: ForgettableList, value: string) => void
 }) {
   const setup = useMemo(() => entrySetup(pack, settings), [pack, settings])
 
@@ -123,6 +128,11 @@ export function EntryForm({
           value={draft.project}
           onChange={(project) => setDraft({ ...draft, project })}
           otherLabel={t.otherValue}
+          removable={(v) => isOwn(settings.customValues.projects, v)}
+          onRemove={(v) => onForget('projects', v)}
+          moreLabel={t.moreOptions}
+          removeLabel={t.removeFromList}
+          cancelLabel={t.cancel}
         />
       </Field>
 
@@ -133,6 +143,11 @@ export function EntryForm({
           onChange={(section) => setDraft({ ...draft, section })}
           otherLabel={t.otherValue}
           placeholder={setup.emptySectionText}
+          removable={(v) => isOwn(settings.customValues.sections, v)}
+          onRemove={(v) => onForget('sections', v)}
+          moreLabel={t.moreOptions}
+          removeLabel={t.removeFromList}
+          cancelLabel={t.cancel}
         />
       </Field>
 
@@ -142,6 +157,11 @@ export function EntryForm({
           value={draft.interventionType}
           onChange={(interventionType) => setDraft({ ...draft, interventionType })}
           otherLabel={t.otherValue}
+          removable={(v) => isOwn(settings.customValues.interventionTypes, v)}
+          onRemove={(v) => onForget('interventionTypes', v)}
+          moreLabel={t.moreOptions}
+          removeLabel={t.removeFromList}
+          cancelLabel={t.cancel}
         />
       </Field>
 
@@ -172,6 +192,7 @@ export function EntryForm({
         pool={setup.colleagues}
         selected={draft.colleagues}
         onChange={(colleagues) => setDraft({ ...draft, colleagues })}
+        onForget={(name) => onForget('colleagues', name)}
       />
     </Sheet>
   )
@@ -432,13 +453,16 @@ function ColleaguePicker({
   pool,
   selected,
   onChange,
+  onForget,
 }: {
   t: Strings
   pool: Person[]
   selected: Person[]
   onChange: (next: Person[]) => void
+  onForget: (name: string) => void
 }) {
   const [typed, setTyped] = useState('')
+  const [confirming, setConfirming] = useState<string | null>(null)
   const isSelected = (person: Person) => selected.some((p) => p.name === person.name)
 
   const toggle = (person: Person) => {
@@ -459,16 +483,41 @@ function ColleaguePicker({
       {pool.length > 0 ? (
         <div className="chips">
           {pool.map((person) => (
-            <button
-              key={person.name}
-              type="button"
-              className={`chip${isSelected(person) ? ' is-selected' : ''}`}
-              onClick={() => toggle(person)}
-            >
-              {person.name}
-            </button>
+            // Every colleague here was typed by this technician, so every one can be
+            // taken back out — which is the whole point of the ⋯ beside the name.
+            <span className="chip-wrap" key={person.name}>
+              <button
+                type="button"
+                className={`chip${isSelected(person) ? ' is-selected' : ''}`}
+                onClick={() => toggle(person)}
+              >
+                {person.name}
+              </button>
+              <button
+                type="button"
+                className="chip-more"
+                aria-label={`${t.moreOptions}: ${person.name}`}
+                onClick={() => setConfirming(confirming === person.name ? null : person.name)}
+              >
+                ⋯
+              </button>
+            </span>
           ))}
         </div>
+      ) : null}
+
+      {confirming !== null ? (
+        <RemoveConfirm
+          value={confirming}
+          removeLabel={t.removeFromList}
+          cancelLabel={t.cancel}
+          onRemove={() => {
+            onForget(confirming)
+            onChange(selected.filter((p) => p.name !== confirming))
+            setConfirming(null)
+          }}
+          onCancel={() => setConfirming(null)}
+        />
       ) : null}
 
       {selected.filter((person) => !pool.some((p) => p.name === person.name)).length > 0 ? (
@@ -517,3 +566,8 @@ function ColleaguePicker({
   )
 }
 
+
+/** Whether a value is one the technician typed, rather than one the company supplied. */
+function isOwn(custom: string[], value: string): boolean {
+  return custom.some((v) => v.trim().toLowerCase() === value.trim().toLowerCase())
+}
